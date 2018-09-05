@@ -1912,6 +1912,21 @@ class NtoApiClient(object):
         return self._callServer('DELETE', '/api/monitors/' + monitor_id, None, False)
 
     ###################################################
+    # Neighbors
+    ###################################################
+    def getAllNeighbors(self, port_id_list=[]):
+        """ getAllNeighbors :
+        Fetch a list containing summaries for all the neigbors the system learned by snooping on LLDP messages
+
+        Sample usage:
+        >>> nto.getAllNeighbors()
+        
+        """
+        # TODO TEST we got HTTP/200 with JSON back
+        # TODO TEST we got 'message' key back
+        return self._callServer('POST', '/api/actions/get_neighbors', {'port_id_list': port_id_list})['message']
+    
+    ###################################################
     # Port Groups
     ###################################################
     def getAllPortGroups(self):
