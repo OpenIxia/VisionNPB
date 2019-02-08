@@ -1,31 +1,52 @@
 #! /usr/bin/env python
 
 #################################################################################
-##
-## File:   importConfig.py
-## Date:   June 17, 2016
-## Author: Fred Mota (fmota@ixiacom.com)
-##
-## History:
-##
-## Description:
-## This script will import a configuration (.ata) file to an NTO or an GSC
-## device.
-## The script will import the same configuration file simultaneously to multiple
-## hosts by creating one thread per host.
-##
-## (c) 1998-2016 Ixia. All rights reserved.
-##
-##############################################################################
+#
+# File:   importConfig.py
+# Date:   June 17, 2016
+# Author: Fred Mota (fmota@ixiacom.com)
+#
+# History:
+#  February 8, 2019:
+#    - Updated copyright note.
+#    - Use the ksvisionlib library.
+#
+# Description:
+# This script will import a configuration (.ata) file to an NTO or an GSC
+# device.
+# The script will import the same configuration file simultaneously to multiple
+# hosts by creating one thread per host.
+#
+# COPYRIGHT 2016-2019 Keysight Technologies.
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights to
+# use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+# of the Software, and to permit persons to whom the Software is furnished to do
+# so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+#
+################################################################################
 
 import sys
 import getopt
 import threading
-from ixia_nto import *
+from ksvisionlib import *
 
 def importConfig(host_ip, port, username, password, config_file):
     
-    nto = NtoApiClient(host=host_ip, username=username, password=password, port=port)
+    nto = VisionWebApi(host=host_ip, username=username, password=password, port=port)
     nto.importConfig({'import_type': 'FULL_IMPORT_FROM_BACKUP', 'file_name': config_file})
 
    
