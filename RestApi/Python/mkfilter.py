@@ -1,8 +1,75 @@
 #! /usr/bin/env python
 
+################################################################################
+#
+# File:   mkfilter.py
+# Date:   July 24, 2015
+# Author: Fred Mota (fred.mota@keysight.com)
+#
+# History:
+#  February 8, 2019:
+#    - Updated copyright note.
+#    - Use the ksvisionlib library.
+#
+# Description:
+# This script creates 2^n filters, from 0 to 2^n-1.  Where the 0th filter
+# contains all the source and destination IP addresses that when they are XORed
+# together, the result is 0, the 1st filter conatins tall the source and
+# destination IP addresses that when they are XORed together, the result is 1,
+# and so on.
+# The user can specify what type of IP addresses to use, IPv4 or IPv6, and also
+# what bits to use in the IP addresses, that is, and offset from the least
+# significant bit.
+#
+# For example, given:
+# n (length) = 2
+# version = IPv4
+# offset = 0
+#
+# the script will create the following bidirectional filters:
+#
+#  0) IPv4 A= 0.0.0.0   IPv4 B= 0.0.0.0   Mask= 0.0.0.3   00 xor 00 = 00
+#     IPv4 A= 0.0.0.1   IPv4 B= 0.0.0.1   Mask= 0.0.0.3   01 xor 01 = 00
+#     IPv4 A= 0.0.0.2   IPv4 B= 0.0.0.2   Mask= 0.0.0.3   10 xor 10 = 00
+#     IPv4 A= 0.0.0.3   IPv4 B= 0.0.0.3   Mask= 0.0.0.3   11 xor 11 = 00
+#
+#  1) IPv4 A= 0.0.0.1   IPv4 B= 0.0.0.0   Mask= 0.0.0.3   01 xor 00 = 01
+#     IPv4 A= 0.0.0.3   IPv4 B= 0.0.0.2   Mask= 0.0.0.3   11 xor 10 = 01
+#
+#  2) IPv4 A= 0.0.0.2   IPv4 B= 0.0.0.0   Mask= 0.0.0.3   10 xor 00 = 10
+#     IPv4 A= 0.0.0.3   IPv4 B= 0.0.0.1   Mask= 0.0.0.3   11 xor 01 = 10
+#
+#  3) IPv4 A= 0.0.0.3   IPv4 B= 0.0.0.0   Mask= 0.0.0.3   11 xor 00 = 11
+#     IPv4 A= 0.0.0.2   IPv4 B= 0.0.0.1   Mask= 0.0.0.3   10 xor 01 = 11
+#
+# Note: If traffic with many different IP addresses is sent to these filters,
+# the traffic should be load balanced evenly among the filters.
+#
+# COPYRIGHT 2015-2019 Keysight Technologies.
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights to
+# use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+# of the Software, and to permit persons to whom the Software is furnished to do
+# so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+#
+################################################################################
+
 import sys
 import getopt
-from ixia_nto import *
+from ksvisionlib import *
 
 def ipAddress (bits, version):
     address = ''
@@ -74,7 +141,7 @@ if version == '':
     sys.exit(2)
 
 
-nto = NtoApiClient(host=host, username=username, password=password, port=port)
+nto = VisionWebApi(host=host, username=username, password=password, port=port)
 
 if version == 4:
     width = 32
