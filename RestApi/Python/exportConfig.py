@@ -1,32 +1,53 @@
 #! /usr/bin/env python
 
-#################################################################################
-##
-## File:   exportConfig.py
-## Date:   May 24, 2017
-## Author: Fred Mota (fmota@ixiacom.com)
-##
-## History:
-##
-## Description:
-## This script will export the current configuration of an NTO or GSC device
-## to a (.ata).
-## The script will export the configuration of several hosts simultaneously to
-## multiple files by creating one thread per host.
-##
-## (c) 1998-2017 Ixia. All rights reserved.
-##
-##############################################################################
+################################################################################
+#
+# File:   exportConfig.py
+# Date:   May 24, 2017
+# Author: Fred Mota (fred.mota@keysight.com)
+#
+# History:
+#  February 8, 2019:
+#    - Updated copyright note.
+#    - Use the ksvisionlib library.
+#
+# Description:
+# This script xports the current configuration of an NTO or GSC device
+# to a .ata file.
+# The script exports the configuration of several hosts simultaneously to
+# multiple files by creating one thread per host.
+#
+# COPYRIGHT 2017-2019 Keysight Technologies.
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights to
+# use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+# of the Software, and to permit persons to whom the Software is furnished to do
+# so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+#
+################################################################################
 
 import sys
 import getopt
 import threading
 import time
-from ixia_nto import *
+from ksvisionlib import *
 
 def exportConfig(host_ip, port, username, password, timestamp):
     
-    nto = NtoApiClient(host=host_ip, username=username, password=password, port=port)
+    nto = VisionWebApi(host=host_ip, username=username, password=password, port=port)
     nto.exportConfig({'export_type': 'FULL_BACKUP', 'file_name': host_ip + '_full_backup_' + timestamp + '.ata'})
 
    
