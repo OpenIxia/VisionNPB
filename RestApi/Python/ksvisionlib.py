@@ -402,9 +402,36 @@ class VisionWebApi(object):
     
     def getLoginInfo(self):
         """ getLoginInfo :
-        Return info helpful for login.
+        Returns last login session details plus hardware info and sensor readings for the device
 
         Sample usage:
+        >>> nto.getLoginInfo()
+        {
+            "hardware_info": {
+                    "cpld_rev": null,
+                    "fpga_rev": null,
+                    "mac_address": "001B6E08D47F",
+                    "mac_address2": "001b6e08d47f",
+                    "max_cool_temperature": 49,
+                    "max_hot_temperature": 81,
+                    "max_ok_temperature": 57,
+                    "module_list": [ ... ],
+                    "primary_mgmt_port": "eth0",
+                                    "secondary_mgmt_port": null,
+                                    "snmp_engine_id": "0x80007f6c03001B6E08D47F",
+                                    "system_id": "E40-00001456",
+                                    "top_assembly_number": "Vision E40"
+            },
+            "has_license_file": true,
+            "is_password_expired": false,
+            "password_change_required": false,
+            "prev_login_info": {
+                    "client_ip_address": "156.140.231.30",
+                    "failures_count": 0,
+                    "is_sysadm_modified": false,
+                    "timestamp": 1536342551729
+            }
+        }
         """
         args = {}
         return self._sendRequest('POST', '/api/actions/get_login_info', args)
