@@ -406,7 +406,8 @@ class VisionWebApi(object):
 
         Sample usage:
         """
-        return self._sendRequest('POST', '/api/actions/get_login_info', None)
+        args = {}
+        return self._sendRequest('POST', '/api/actions/get_login_info', args)
 
     def getFabricPorts(self, args):
         """ getFabricPorts :
