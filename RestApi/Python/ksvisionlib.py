@@ -21,6 +21,9 @@
 #    - In sync with the "Ixia GSC 7400 Series Web API User Guide,"
 #      GSC 1.5.0, October 2018
 #
+#  March 25, 2019:
+#    - Added the getPortGroupProperties method.
+#
 # COPYRIGHT 2019 Keysight Technologies.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -2306,6 +2309,17 @@ class VisionWebApi(object):
         [u'TIME']
         """
         return self._sendRequest('GET', '/api/port_groups/' + port_group + '?properties=' + property)[property]
+
+    def getPortGroupProperties(self, port_group, properties):
+        """ getPortGroupProperties :
+        Fetch one or more properties of a port group object which is specified by its
+        port_group_id_or_name.
+
+        Sample usage:
+        >>> nto.getPortGroupProperties('50', 'keywords,link_status,default_name,enabled,filter_mode')
+        {u'filter_mode': u'DISABLE', u'keywords': [], u'default_name': u'PG1', u'enabled': None, u'link_status': {u'speed': 10000, u'link_up': True}}
+        """
+        return self._sendRequest('GET', '/api/port_groups/' + port_group + '?properties=' + properties)
 
     ###################################################
     # Ports
