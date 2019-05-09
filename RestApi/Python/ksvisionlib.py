@@ -1,7 +1,7 @@
 #################################################################################
 #
 # File:   ksvisionlib.py
-# Date:   February 1, 2019
+# Date:   May 9, 2019
 # Author: Fred Mota (fred.mota@keysight.com)
 #
 # Description:
@@ -23,6 +23,11 @@
 #
 #  March 25, 2019:
 #    - Added the getPortGroupProperties method.
+#
+#  April 15, 2019:
+#    - Added getters and setters for: debud and request_timeout
+#    - Check the return code after sending a request and raise an alarm if
+#      necessary.
 #
 # COPYRIGHT 2019 Keysight Technologies.
 #
@@ -65,6 +70,23 @@ class AuthenticationError(KeysightNpbExceptions):
     """Exception raised for authentication errors."""
     pass
 
+class webAPIError(KeysightNpbExceptions):
+    """Exception raised for API errors."""
+    def __init__(self, code):
+        super(webAPIError, self).__init__()
+        self.code = code
+
+    def __str__(self):
+        return "Return code = {0}".format(self.code)
+
+class webAPIClientError(webAPIError):
+    """Exception raised for API client errors."""
+    pass
+
+class webAPIServerError(webAPIError):
+    """Exception raised for API server errors."""
+    pass
+
 class UnknownError(KeysightNpbExceptions):
     """Exception raised for unknown errors."""
     pass
@@ -78,18 +100,19 @@ class VisionWebApi(object):
         self.port = port
         self.user = username
         self.password = password
-        self.debug = debug
+        self.__debug = debug
         self.auth_b64 = ''
         self.password_headers = ''
         self.token_headers = ''
         self.connection = ''
         self.logFile = logFile
-
+        self.__request_timeout = 30
+    
         self.auth_b64 = base64.b64encode(bytearray(username + ":" + password, 'ascii')).decode('ascii')
         self.password_headers = { 'Authorization' : 'Basic ' + self.auth_b64, 'Content-type' : 'application/json' }
 
         #self.connection = urllib3.connectionpool.HTTPSConnectionPool(host, port=port, ssl_version='TLSv1_2')
-        self.connection = urllib3.connectionpool.HTTPSConnectionPool(host, port=port, cert_reqs='CERT_NONE', ca_certs=None, timeout=20, retries=2)
+        self.connection = urllib3.connectionpool.HTTPSConnectionPool(host, port=port, cert_reqs='CERT_NONE', ca_certs=None, timeout=self.__request_timeout, retries=2)
 
         try:
             response = self.connection.urlopen('GET', '/api/auth', headers=self.password_headers)
@@ -98,7 +121,7 @@ class VisionWebApi(object):
         except:
             raise UnknownError
 
-        if debug:
+        if self.__debug:
             self._log ("Status=%s"  % response.status)
             self._log ("Reason=%s"  % response.reason)
             self._log ("Headers=%s" % response.headers)
@@ -113,10 +136,10 @@ class VisionWebApi(object):
 
 
     def __str__(self):
-        return ("NtoApiClient('host=%s', 'port=%s', 'user=%s', 'password=%s', 'auth=%s', 'debug=%s', 'password_hdrs=%s', 'token_hdrs=%s', 'connection=%s'") % (self.host, self.port,  self.user, self.password, self.auth_b64, self.debug, self.password_headers, self.token_headers, self.connection)
+        return ("NtoApiClient('host=%s', 'port=%s', 'user=%s', 'password=%s', 'auth=%s', 'debug=%s', 'password_hdrs=%s', 'token_hdrs=%s', 'connection=%s'") % (self.host, self.port,  self.user, self.password, self.auth_b64, self.__debug, self.password_headers, self.token_headers, self.connection, self.__request_timeout)
 
     def __repr__(self):
-        return ("NtoApiClient('host=%s', 'port=%s', 'user=%s', 'password=%s', 'auth=%s', 'debug=%s', 'password_hdrs=%s', 'token_hdrs=%s', 'connection=%s'") % (self.host, self.port,  self.user, self.password, self.auth_b64, self.debug, self.password_headers, self.token_headers, self.connection)
+        return str(self)
 
     def _log(self, message):
         handle = open(self.logFile, 'a') if self.logFile else sys.stdout
@@ -128,7 +151,7 @@ class VisionWebApi(object):
         """ Send the request to the Web API server."""
 
         response = None
-        if self.debug:
+        if self.__debug:
             self._log ("Sending a message to the server with parameters:\n")
             self._log (" httpMethod=%s\n" % httpMethod)
             self._log (" url=%s\n"        % url)
@@ -137,13 +160,20 @@ class VisionWebApi(object):
         args = json.dumps(args)
         response = self.connection.urlopen(httpMethod, url, body=args, headers=self.token_headers)
 
-        if self.debug:
+        if self.__debug:
             self._log ("Response:\n")
             self._log (" Status=%s\n"  % response.status)
             self._log (" Reason=%s\n"  % response.reason)
             self._log (" Headers=%s\n" % response.headers)
             self._log (" Data=%s\n"    % response.data)
             self._log (" decode=%s\n"  % decode)
+
+        if (response.status >= 400) and (response.status <= 499):
+            raise webAPIClientError(response.status)
+        elif (response.status >= 500) and (response.status <= 599):
+            raise webAPIServerError(response.status)
+        elif response.status != 200:
+            raise webAPIError(response.status)
 
         data = response.data
         if decode:
@@ -152,14 +182,27 @@ class VisionWebApi(object):
 
         return data
 
+    @property
+    def debug(self):
+        """ Get the debug flag """
+        return self.__debug
 
-    def setDebug(self, debug=False):
-        """ Turn on/off debug messages """
-        self.debug = debug
+    @debug.setter
+    def debug(self, flag):
+        """ Set the debug flag """
+        self.__debug = flag
 
-    ###################################################
-    # Actions
-    ###################################################
+    @property
+    def request_timeout(self):
+        """ Get the request timeout """
+        return self.__request_timeout
+
+    @request_timeout.setter
+    def request_timeout(self, timeout):
+        """ Set the request timeout """
+        self.__request_timeout = timeout
+        self.connection.timeout = Timeout(connect=timeout, read=timeout)
+
     def authenticate(self):
         """ authenticate :
         Athenticate with the NTO using username and password.
@@ -169,7 +212,7 @@ class VisionWebApi(object):
         """
         response = self.connection.urlopen('GET', '/api/auth', headers=self.password_headers)
 
-        if self.debug:
+        if self.__debug:
             self._log ("Status=%s"  % response.status)
             self._log ("Reason=%s"  % response.reason)
             self._log ("Headers=%s" % response.headers)
@@ -177,6 +220,9 @@ class VisionWebApi(object):
 
         self.token_headers = { 'Authentication' : response.headers['x-auth-token'], 'Content-type' : 'application/json' }
 
+    ###################################################
+    # Actions
+    ###################################################
     def addAggregationSwitch(self):
         """ addAggregationSwitch :
         Adds a new Aggregation Switch to a Switch Cluster.
@@ -1695,7 +1741,7 @@ class VisionWebApi(object):
         return self._sendRequest('PUT', '/api/custom_icons/' + icon_id, args, False)
 
     def searchIcon(self, args):
-        """ searchFilterTemplateCollections :
+        """ searchIcon :
         Search for a specific custom icon in the system by certain properties.
 
         Sample usage:
