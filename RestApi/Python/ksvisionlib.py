@@ -107,7 +107,7 @@ class VisionWebApi(object):
         self.connection = ''
         self.logFile = logFile
         self.__request_timeout = 30
-    
+
         self.auth_b64 = base64.b64encode(bytearray(username + ":" + password, 'ascii')).decode('ascii')
         self.password_headers = { 'Authorization' : 'Basic ' + self.auth_b64, 'Content-type' : 'application/json' }
 
@@ -133,7 +133,6 @@ class VisionWebApi(object):
             raise AuthenticationError
 
         self.token_headers = { 'Authentication' : self.token, 'Content-type' : 'application/json' }
-
 
     def __str__(self):
         return ("NtoApiClient('host=%s', 'port=%s', 'user=%s', 'password=%s', 'auth=%s', 'debug=%s', 'password_hdrs=%s', 'token_hdrs=%s', 'connection=%s'") % (self.host, self.port,  self.user, self.password, self.auth_b64, self.__debug, self.password_headers, self.token_headers, self.connection, self.__request_timeout)
@@ -206,7 +205,7 @@ class VisionWebApi(object):
     def authenticate(self):
         """ authenticate :
         Athenticate with the NTO using username and password.
-        
+
         Sample usage:
         >>> nto.authenticate()
         """
