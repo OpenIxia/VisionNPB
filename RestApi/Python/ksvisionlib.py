@@ -1954,13 +1954,24 @@ class VisionWebApi(object):
     def getFilterProperty(self, filter, property):
         """ getFilterProperty :
         Fetch a property of a filter object which is specified by its
-        port_id_or_name.
+        filter_id_or_name.
         
         Sample usage:
         >>> nto.getFilterProperty('F1', 'keywords')
         [u'TIME']
         """
         return self._sendRequest('GET', '/api/filters/' + filter + '?properties=' + property)[property]
+
+    def getFilterProperties(self, filter, properties):
+        """ getFilterProperties :
+        Fetch a list of properties of a filter object which is specified by its
+        filter_id_or_name.
+        
+        Sample usage:
+        >>> nto.getFilterProperty('F1', 'mode,keywords')
+        [u'TIME']
+        """
+        return self._sendRequest('GET', '/api/filters/' + filter + '?properties=' + properties)
 
     ####################################
     # Groups
