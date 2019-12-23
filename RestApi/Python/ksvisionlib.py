@@ -29,6 +29,36 @@
 #    - Check the return code after sending a request and raise an alarm if
 #      necessary.
 #
+#  December 15, 2019:
+#    - Added getFilterProperties
+#
+# December 22, 2019:
+#    - Replaced % string formatting with prefered format function.
+#    - Renamed method getAeEventsSummaryReportAction to getAeEventsSummaryReport
+#
+#    - Added Vision NPB v5.0.2 Changes:
+#        - Added method getAeEventsReportHistory
+#
+#    - Added Vision NPB v5.1.0 Changes:
+#        - Added method getEventsSummaryReport
+#        - Added method getChannelLatencyStats
+#        - Added method getAllEodReportsInfo
+#        - Added method getCteNeighbors
+#        - Added method installNetservice
+#        - Added method removeNetservice
+#        - Added method removePortModuleConfiguration
+#        - Added method validateAuthCalls
+#        - Added method forcePowerPortModule
+#        - Added all the methods for GTP FD resources
+#        - Added all the methods for Netservice Instances
+#
+#    - Added Vision NPB v5.2.0 Changes:
+#        - Added method markEodReportAsGolden
+#        - Added method optimizeRoutes
+#        - Added method getAllIfcRoutes
+#        - Added method getIfcRoute
+#        - Added method searchIfcRoute
+#
 # COPYRIGHT 2019 Keysight Technologies.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -122,10 +152,10 @@ class VisionWebApi(object):
             raise UnknownError
 
         if self.__debug:
-            self._log ("Status=%s"  % response.status)
-            self._log ("Reason=%s"  % response.reason)
-            self._log ("Headers=%s" % response.headers)
-            self._log ("Data=%s"    % response.data)
+            self._log ("Status={:d}\n".format(response.status))
+            self._log ("Reason={:s}\n".format(response.reason))
+            self._log ("Headers={:s}\n".format(response.headers))
+            self._log ("Data={:s}\n".format(response.data))
 
         try:
             self.token = response.headers['x-auth-token']
@@ -135,7 +165,7 @@ class VisionWebApi(object):
         self.token_headers = { 'Authentication' : self.token, 'Content-type' : 'application/json' }
 
     def __str__(self):
-        return ("NtoApiClient('host=%s', 'port=%s', 'user=%s', 'password=%s', 'auth=%s', 'debug=%s', 'password_hdrs=%s', 'token_hdrs=%s', 'connection=%s'") % (self.host, self.port,  self.user, self.password, self.auth_b64, self.__debug, self.password_headers, self.token_headers, self.connection, self.__request_timeout)
+        return "VisionWebApi(host='{:s}', port={:d}, user='{:s}', password='{:s}', auth64='{:s}', password_hdrs='{:s}', token_hdrs='{:s}', connection='{:s}', debug={:}, timeout={:d})".format(self.host, self.port,  self.user, self.password, self.auth_b64, self.password_headers, self.token_headers, self.connection, self.__debug, self.__request_timeout)
 
     def __repr__(self):
         return str(self)
@@ -152,20 +182,20 @@ class VisionWebApi(object):
         response = None
         if self.__debug:
             self._log ("Sending a message to the server with parameters:\n")
-            self._log (" httpMethod=%s\n" % httpMethod)
-            self._log (" url=%s\n"        % url)
-            self._log (" args=%s\n"       % args)
+            self._log (" httpMethod={:s}\n".format(httpMethod))
+            self._log (" url={:s}\n".format(url))
+            self._log (" args={:s}\n".format(args))
 
         args = json.dumps(args)
         response = self.connection.urlopen(httpMethod, url, body=args, headers=self.token_headers)
 
         if self.__debug:
             self._log ("Response:\n")
-            self._log (" Status=%s\n"  % response.status)
-            self._log (" Reason=%s\n"  % response.reason)
-            self._log (" Headers=%s\n" % response.headers)
-            self._log (" Data=%s\n"    % response.data)
-            self._log (" decode=%s\n"  % decode)
+            self._log (" Status={:d}\n".format(response.status))
+            self._log (" Reason={:s}\n".format(response.reason))
+            self._log (" Headers={:s}\n".format(response.headers))
+            self._log (" Data={:s}\n".format(response.data))
+            self._log (" decode={:}\n".format(decode))
 
         if (response.status >= 400) and (response.status <= 499):
             raise webAPIClientError(response.status)
@@ -200,7 +230,7 @@ class VisionWebApi(object):
     def request_timeout(self, timeout):
         """ Set the request timeout """
         self.__request_timeout = timeout
-        self.connection.timeout = Timeout(connect=timeout, read=timeout)
+        self.connection.timeout = urllib3.Timeout(connect=timeout, read=timeout)
 
     def authenticate(self):
         """ authenticate :
@@ -212,10 +242,10 @@ class VisionWebApi(object):
         response = self.connection.urlopen('GET', '/api/auth', headers=self.password_headers)
 
         if self.__debug:
-            self._log ("Status=%s"  % response.status)
-            self._log ("Reason=%s"  % response.reason)
-            self._log ("Headers=%s" % response.headers)
-            self._log ("Data=%s"    % response.data)
+            self._log ("Status={:d}\n".format(response.status))
+            self._log ("Reason={:s}\n".format(response.reason))
+            self._log ("Headers={:s}\n".format(response.headers))
+            self._log ("Data={:s}\n".format(response.data))
 
         self.token_headers = { 'Authentication' : response.headers['x-auth-token'], 'Content-type' : 'application/json' }
 
@@ -417,6 +447,16 @@ class VisionWebApi(object):
         args = {}
         return self._sendRequest('POST', '/api/actions/factory_reset', args)
 
+    def forcePowerPortModule(self, args):
+        """ forcePowerPortModule :
+        This command will power on/off the port module in the given module location.
+        This method is allowed only on the following models: 8000.
+        
+        Sample usage:
+        """
+        args = {}
+        return self._sendRequest('POST', '/api/actions/force_power_port_module', args, False)
+
     def generateCsr(self, args):
         """ generateCsr :
         Allows Syslog and TLS/HTTPS certificates to be uploaded and deleted. Basic
@@ -427,6 +467,14 @@ class VisionWebApi(object):
         {u'csr': u'-----BEGIN CERTIFICATE REQUEST-----MIIC5zCCAc8CAQAwWzELMAkGA1UECBMCVFgxDzANBgNVBAcTBkF1c3RpbjELMAkGA1UEBhMCVVMxDDAKBgNVBAsTA05WUzENMAsGA1UEChMESXhpYTERMA8GA1UEAxMIVGVzdCBBUEkwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQC4RNOnSPTRamGkAwj/otEgzAFYIEXlpsO4OS16P49l3c0n5ShDs0uo2pd4a0Qe4Wvh/KX4L1oZbxS/2YNJgNlLiRkHo5K62ZYYskfNGXPBYfkkRDLk76SrhgHyoGSEy8h6OdeE2QpfgsD/XLQVoFQ3dVemSwo76bE3Vap333fJmvtNJNgItkKqKBW3zF1doSWJwEHDwwhG9/KSfFBHf/qE51LRj2iybZQE4ijZGHv0I7CtSF20166sH75EhsoK8/vs1RT6LpyuEM9JKoRzmvE1ufk3nHtlvF3UniUluUCubXfldaEROIeBvYfoWZGGuyzAN01ZbxZ+/K2ENokpVKPbAgMBAAGgRzBFBgkqhkiG9w0BCQ4xODA2MA8GA1UdEQQIMAaCBEFudWUwDgYDVR0PAQH/BAQDAgUgMBMGA1UdJQQMMAoGCCsGAQUFBwMCMA0GCSqGSIb3DQEBCwUAA4IBAQAfVnwTv1t56YWU2W5+Fjlc9nuTL7eAoKqkioTJ1CuAINLybbHYUVXVfpBahfjj7g6ZmiWZ383SK7ImuPfHE7kt/eRDna+/+HUQ22799HQmyLcxCkYZVSH8gWkTNbUIhgh4AFMwt83zWu324P+qNkh5u0sckPTfNzry3Mxz2QzmM5sP+oU8/RCt04iYzz5KSu+tzHWJ9FOGLQqQ73Ausz0smTDFBlVLs8VCifHVc2QmSbIofHVPUOUEjWo+FFb6WK6/7NjgE4DM9rVDV7eW9WXZgos6WnXRVMIpedeibh31iM/sc63F0tQHXt696kfO19LBc6FLMKLCvVtkGfSnq5u9-----END CERTIFICATE REQUEST-----'}
         """
         return self._sendRequest('POST', '/api/actions/generate_csr', args)
+
+    def getAllEodReportsInfo(self, args):
+        """ getAllEodReportsInfo :
+        Returns the list of all Eod events summary Report for all AEs in a TradeVision.
+            
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/actions/get_ae_events_report_info', args)
 
     def getAvailableFilterCriteria(self, args):
         """ getAvailableFilterCriteria :
@@ -439,8 +487,49 @@ class VisionWebApi(object):
         """
         return self._sendRequest('POST', '/api/actions/get_available_filter_criteria', args)
 
-    def getAeEventsSummaryReportAction(self):
-        """ getAeEventsSummaryReportAction :
+    def getChannelLatencyStats(self, args):
+        """ getChannelLatencyStats :
+        This command is used to get the latency/jitter statisics for a given channel id and VLAN Match type per Analysis Engine.
+            
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/actions/get_channel_latency_stats', args)
+
+    def getDtspChannelInfo(self, args):
+        """ getDtspChannelInfo :
+        This command is used to get the channel info based on a given list of channel IP:Port.
+            
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/actions/get_dtsp_channel_info', args)
+
+    def getEventsSummaryReport(self):
+        """ getEventsSummaryReport :
+        Return a End-Of-Day report by name or a comparison report between two different End-Of-Day reports.
+        If report name is specified, event summary report is returned.
+        If two report names are specified, a new report is generated holding the differences between the two EOD reports.
+            
+        Sample usage:
+        """
+        args = {}
+        return self._sendRequest('POST', '/api/actions/get_ae_events_report_action', args)
+    
+    def getAeEventsReportHistory(self):
+        """ getAeEventsReportHistory :
+        Return either a list of the latest 8 End-Of-Day reports run on the system or a comparison between
+        two different End-Of-Day reports. If no report dates are specified, the latest 8 End-Of-Day reports
+        are returned (the maximum number of EOD reports retained by the system). If two dates are specified
+        (representing the end date of two different EOD reports), a new report is generated holding the
+        differences between the two EOD reports. Note that the end dates must be from any of the latest 8
+        EOD reports run.
+            
+        Sample usage:
+        """
+        args = {}
+        return self._sendRequest('POST', '/api/actions/get_ae_events_report_history_action', args)
+    
+    def getAeEventsSummaryReport(self):
+        """ getAeEventsSummaryReport :
         Return events summary report for all the AEs in a TradeVision.
             
         Sample usage:
@@ -528,7 +617,7 @@ class VisionWebApi(object):
         """ getNeighbors :
         Get neighbors of a list of ports given as parameter. If the list given is empty or is not given at all, it will return
         all neighbors for all ports that are valid for LLDP and have valid neighbors registrations.
-        This method is allowed only on the following models: E40
+        This method is allowed only on the following models: E40, TradeVision
 
         Sample usage:
         """
@@ -668,6 +757,52 @@ class VisionWebApi(object):
 
         return data
 
+    def installNetservice(self, args):
+        """ installNetservice :
+        This command installs a netservice upgrade file on an NTO.
+        This method is allowed only on the following models: 8000
+        
+        Sample usage:
+        """
+            
+        file_name = ''
+        if 'file_name' in args:
+            file_name = args['file_name']
+            del args['file_name']
+
+        boundary = "-----WebKitFormBoundary" + str(int(time.time())) + str(os.getpid())
+
+        buffer = bytearray()
+
+        # Set param
+        if len(args.keys()) > 0:
+            buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'\r\n')
+            buffer.extend(b'Content-Disposition: form-data; name="param"\r\n')
+            buffer.extend(b'Content-Type: application/json\r\n')
+            buffer.extend(b'\r\n')
+            #buffer.extend(json.dumps({'action_target' : target}))
+            buffer.extend(json.dumps(args))
+            buffer.extend(b'\r\n')
+
+        # Set creative contents part.
+        buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'\r\n')
+        buffer.extend(b'Content-Disposition: form-data; name="file"; filename=' + bytearray(file_name, 'ascii') + b'\r\n')
+        buffer.extend(b'Content-Type: application/octet-stream\r\n')
+        buffer.extend(b'\r\n')
+        # TODO: catch errors with opening file.
+        buffer.extend(open(file_name, 'rb').read())
+        buffer.extend(b'\r\n')
+
+        buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'--\r\n')
+        buffer.extend(b'\r\n')
+
+        hdrs =  { 'Authentication' : self.token, 'Content-type' : 'multipart/form-data; boundary=' + boundary }
+        response = self.connection.urlopen('POST', '/api/actions/install_netservice', body=buffer, headers=hdrs)
+        #self._log (response.status, response.reason)
+        data = response.data
+
+        return data
+
     def installLicense_old(self, args):
         """ installLicense :
         This command installs a license file on a NTO, a union, or a member.
@@ -766,6 +901,14 @@ class VisionWebApi(object):
         """
         return self._sendRequest('POST', '/api/actions/mtu_query', args)
 
+    def markEodReportAsGolden(self, args={}):
+        """ markEodReportAsGolden :
+        Marks a completed End-Of-Day Report as a Golden Report.
+
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/actions/mark_ae_eod_report_golden', args)
+
     def powerDown(self, args={}):
         """ powerDown :
         This command safely shuts down an NTO, a union or a member.
@@ -808,6 +951,25 @@ class VisionWebApi(object):
         """
         args={}
         return self._sendRequest('POST', '/api/actions/remove_license', args)
+
+    def removeNetservice(self, args):
+        """ removeNetservice :
+        This command will remove (uninstall) a netservice based on the given service id.
+        This method is allowed only on the following models: 8000.
+        
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/actions/remove_netservice', args, False)
+
+    def removePortModuleConfiguration(self, args):
+        """ removePortModuleConfiguration :
+        
+        This command will remove the port module configuration based on the given module location.
+        This method is allowed only on the following models: 8000.
+        
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/actions/remove_port_module_config', args, False)
 
     def removeLineCard(self, args):
         """ removeLineCard :
@@ -902,6 +1064,16 @@ class VisionWebApi(object):
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/swap_port_licenses', args, False)
+
+    def validateAuthCalls(self):
+        """ validateAuthCalls :
+        This command checks auth for rest calls
+        This method is allowed only on the following models: 8000.
+        
+        Sample usage:
+        """
+        args = {}
+        return self._sendRequest('POST', '/api/actions/validate_auth', args)
 
     def modifyFabricPorts(self, args):
         """ modifyFabricPorts :
@@ -1163,7 +1335,13 @@ class VisionWebApi(object):
         'User "admin" has logged out.'
         """
         args = {}
-        return self._sendRequest('GET', '/api/auth/logout', args, False)
+        try:
+            # New API
+            data = self._sendRequest('POST', '/api/auth/logout', args)
+        except:
+            # Old API
+            data = self._sendRequest('GET', '/api/auth/logout', args, False)
+        return data
 
     ###################################################
     # Bypass connectors
@@ -1470,6 +1648,19 @@ class VisionWebApi(object):
         """
         return self._sendRequest('POST', '/api/cte_operations/force_remove', args)
 
+    def getCteNeighbors(self, args={}):
+        """ getCteNeighbors :
+        Get discovered LLDP neighbors from cluster for specified list of members and specified lisf of ports.
+        If both lists of members and ports given are empty or not given at all, then will return all discovered
+        LLDP neighbors for all ports from members of cluster, that are valid for LLDP and have valid neighbors
+        records. If only a list of members is specified, then will return all discovered LLDP neighbors for all
+        ports from these members. If only a list of ports is specified, then will return all discovered LLDP
+        neighbors for specified ports.
+
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/cte_operations/cte_get_neighbors', args)
+    
     def getPortTunnelingInfo(self):
         """ getPortTunnelingInfo :
         Get the tunnel termination and origination settings.
@@ -1520,6 +1711,15 @@ class VisionWebApi(object):
         Sample usage:
         """
         return self._sendRequest('POST', '/api/cte_operations/leave_topology', args)
+
+    def optimizeRoutes(self, args):
+        """ optimizeRoutes :
+        This command will perform route reconfiguration to ensure maximum filter coverage and
+        better traffic load balancing across the cluster.
+
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/cte_operations/optimize_routes', args)
 
 
     # CTE Port Groups
@@ -1593,6 +1793,34 @@ class VisionWebApi(object):
         """
         return self._sendRequest('POST', '/api/cte_ports/search', args)
         
+    ####################################
+    # IFC Routes
+    ####################################
+    def getAllIfcRoutes(self):
+        """ getAllIfcRoutes :
+        Fetch a list containing the summaries for all IFC routes.
+
+        Sample usage:
+        """
+        return self._sendRequest('GET', '/api/cte_routes/')
+
+    def getIfcRoute(self, ifc_route_id):
+        """ getIfcRoute :
+        Fetch the properties of an IFC route.
+
+        Sample usage:
+        """
+        return self._sendRequest('GET', '/api/cte_routes/' + ifc_route_id)
+
+    def searchIfcRoute(self, args):
+        """ searchIfcRoute :
+        Search a specific IFC route by certain properties.
+
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/cte_routes/search', args)
+
+
     ####################################
     # CTE Remote Systems (deprecated)
     ####################################
@@ -1966,10 +2194,10 @@ class VisionWebApi(object):
         """ getFilterProperties :
         Fetch a list of properties of a filter object which is specified by its
         filter_id_or_name.
-        
+            
         Sample usage:
-        >>> nto.getFilterProperty('F1', 'mode,keywords')
-        [u'TIME']
+        >>> nto.getFilterProperties('F1', 'mode,name')
+        {u'mode': u'PASS_ALL', u'name': u'L2-Resoure-Akamai'}
         """
         return self._sendRequest('GET', '/api/filters/' + filter + '?properties=' + properties)
 
@@ -2037,6 +2265,65 @@ class VisionWebApi(object):
         """
         return self._sendRequest('POST', '/api/groups/search', args)
 
+    ####################################
+    # GTP FD resources
+    ####################################
+    def disableGtpFdResource(self, gtp_fd_resource_id, args):
+        """ disableGtpFdResource :
+        Disables an AFM resource by disconnecting the attached port, port group or filter.
+        
+        Sample usage:
+        """
+        return self._sendRequest('PUT', '/api/gtp_fd_afm_resources/' + gtp_fd_resource_id + '/disable', args, False)
+
+    def enableGtpFdResource(self, gtp_fd_resource_id, args):
+        """ enableGtpFdResource :
+        Enables an AFM resource by attaching a port, port group or filter to it.
+        
+        Sample usage:
+        """
+        return self._sendRequest('PUT', '/api/gtp_fd_afm_resources/' + gtp_fd_resource_id + '/enable', args, False)
+
+    def getGtpFdResourceBandwidth(self, gtp_fd_resource_id):
+        """ getGtpFdResourceBandwidth :
+        Gets the bandwidth details for the Recirculated AFMresource.
+        
+        Sample usage:
+        """
+        return self._sendRequest('PUT', '/api/gtp_fd_afm_resources/' + gtp_fd_resource_id + '/get_bandwidth_details')
+
+    def getGtpFdResource(self, gtp_fd_resource_id):
+        """ getGtpFdResource :
+        Fetch the properties of an GTP-FD resource object.
+
+        Sample usage:
+        """
+        return self._sendRequest('GET', '/api/gtp_fd_afm_resources/' + gtp_fd_resource_id)
+
+    def getAllGtpFdResources(self):
+        """ getAllGtpFdResources :
+        Fetch a list containing the summaries for all the GTP-FD resources in the system.
+
+        Sample usage:
+        """
+        return self._sendRequest('GET', '/api/gtp_fd_afm_resources')
+
+    def searchGtpFdResource(self, args):
+        """ searchGtpFdResource :
+        Search for a specific AFM resource in the system by certain properties.
+
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/gtp_fd_afm_resources/search', args)
+
+    def modifyGtpFdResource(self, group_id, args):
+        """ modifyGtpFdResource :
+        Update the properties of an existing AFM resource.
+
+        Sample usage:
+        """
+        return self._sendRequest('PUT', '/api/gtp_fd_afm_resources/' + gtp_fd_resource_id, args, False)
+    
     ###################################################
     # Heartbeats
     ###################################################
@@ -2274,6 +2561,93 @@ class VisionWebApi(object):
         ''
         """
         return self._sendRequest('DELETE', '/api/monitors/' + monitor_id, None, False)
+
+    ###################################################
+    # Netservice Instances
+    ###################################################
+    def createNetserviceInstance(self, args):
+        """ createNetserviceInstance :
+        Create a new netservice instance in the system.
+
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/netservice_instances', args)
+
+    def deleteNetserviceInstance(self, netservive_id):
+        """ deleteNetserviceInstance :
+        Remove an existing netservice instance from the system.
+
+        Sample usage:
+        """
+        return self._sendRequest('DELETE', '/api/netservice_instances/' + netservive_id, None, False)
+
+    def deployNetserviceInstance(self, netservive_id):
+        """ deployNetserviceInstance :
+        Deployes a specific netservice instance in the system.
+        This method is allowed only on the following models: 8000.
+        
+        Sample usage:
+        """
+        return self._sendRequest('PUT', '/api/netservice_instances/' + netservive_id + '/deploy', None, False)
+
+    def drainNetserviceInstance(self, netservive_id):
+        """ drainNetserviceInstance :
+        Drains a specific netservice instance in the system.
+        This method is allowed only on the following models: 8000.
+        
+        Sample usage:
+        """
+        return self._sendRequest('PUT', '/api/netservice_instances/' + netservive_id + '/drain', None, False)
+
+    def getNetserviceInstance(self, netservice_id):
+        """ getNetserviceInstance :
+        Fetch the properties of a netservice instance object.
+
+        Sample usage:
+        """
+        return self._sendRequest('GET', '/api/netservice_instances/' + netservice_id)
+
+    def getAllNetserviceInstancesType(self, netservive_type):
+        """ getAllNetserviceInstancesType :
+        Fetch a list containing the available resources for specified deployment type in the system.
+        This method is allowed only on the following models: 8000.
+        
+        Sample usage:
+        """
+        return self._sendRequest('PUT', '/api/netservice_instances/' + netservive_type + '/list_available_resources', None)
+
+    def getAllNetserviceInstances(self):
+        """ getAllNetserviceInstances :
+        Fetch a list containing the summaries for all the netservice instances in the system.
+
+        Sample usage:
+        """
+        return self._sendRequest('GET', '/api/netservice_instances')
+
+    def restartNetserviceInstance(self, netservive_id):
+        """ restartNetserviceInstance :
+        Restarts a specific netservice instance in the system.
+        This method is allowed only on the following models: 8000.
+        
+        Sample usage:
+        """
+        return self._sendRequest('PUT', '/api/netservice_instances/' + netservive_id + '/restart', None, False)
+
+    def searchNetserviceInstance(self, args):
+        """ searchNetserviceInstance :
+        Search for a specific netservice instance in the system by certain properties.
+
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/netservice_instances/search', args)
+    
+    def modifyNetserviceInstance(self, netservive_id, args):
+        """ modifyNetserviceInstance :
+        Update the properties of an existing netservice instance.
+
+        Sample usage:
+        """
+        return self._sendRequest('PUT', '/api/netservice_instances/' + netservive_id, args, False)
 
     ###################################################
     # Port Groups
