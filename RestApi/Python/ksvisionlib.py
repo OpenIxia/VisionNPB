@@ -59,7 +59,27 @@
 #        - Added method getIfcRoute
 #        - Added method searchIfcRoute
 #
-# COPYRIGHT 2019 Keysight Technologies.
+# December 24, 2019:
+#    - Added Vision NPB v5.3.0 Changes:
+#        - Added method sendSyntheticPackets
+#        - Added method restoreFirewall
+#        - Added all the methods for CTE Monitors
+#        - Added all the methods for CTE Netflow Resources
+#
+# April 30, 2020:
+#    - Added method exportOfflineLicenseActivationRequest
+#    - Added Vision NPB v5.4.0 Changes:
+#        - Added method getLfdLocalPorts
+#        - Added method getLfdPeerPorts
+#        - Added method getChannelBurstStats
+#        - Renamed method optimizeRoutes to optimizeCteRoutes
+#        - Added method resetCteEventRateLimiterStatus
+#        - Added all the methods for Kubernetes Nodes
+#        - Added all the methods for IFC Capture Resources
+#    - Added GSC v1.5.3 Changes:
+#        - Added method getNumberSessions
+#
+# COPYRIGHT 2019-2020 Keysight Technologies.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -405,6 +425,22 @@ class VisionWebApi(object):
         f.write(file)
         f.close()
 
+    def exportOfflineLicenseActivationRequest(self, args):
+        """ exportOfflineLicenseActivationRequest :
+        Export the request file for FNOOD offline license activation for the current system.
+
+        Sample usage:
+        *** TO BE TESTED ***
+        """
+        file_name = ''
+        if 'file_name' in args:
+            file_name = args['file_name']
+
+        file = self._sendRequest('POST', '/api/actions/export_offline_license_request_file', args, False)
+        f = open(file_name, 'wb')
+        f.write(file)
+        f.close()
+
     def exportKeyGenLicense(self, args):
         """ exportKeyGenLicense :
         Export the KeyGen license details to a json file that can be used
@@ -486,6 +522,14 @@ class VisionWebApi(object):
         []
         """
         return self._sendRequest('POST', '/api/actions/get_available_filter_criteria', args)
+
+    def getChannelBurstStats(self, args):
+        """ getChannelBurstStats :
+        This command is used to get the Channel Burst statisics for a given channel id and VLAN Match type per Analysis Engine.
+            
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/actions/get_channel_burst_stats', args)
 
     def getChannelLatencyStats(self, args):
         """ getChannelLatencyStats :
@@ -620,8 +664,26 @@ class VisionWebApi(object):
         This method is allowed only on the following models: E40, TradeVision
 
         Sample usage:
+        >>> nto.getNeighbors({'port_id_list': [8]})
+        {u'P49': [{u'system_name': u'Ixia Vision One (Neo10 project)', u'port_description': u'', u'system_description': u'', u'expired': False, u'age': 1, u'chassis_id': u'00:1b:6e:04:8d:44', u'custom_tlvs': [], u'ttl': 120, u'port_id': u'P50', u'system_capabilities': u'', u'management_addresses': [], u'last_seen': 1577241420}]}
         """
         return self._sendRequest('POST', '/api/actions/get_neighbors', args)['message']
+
+    def getLfdLocalPorts(self):
+        """ getLfdLocalPorts :
+        Get a list of local ports valid for LFD.
+
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/actions/get_local_ports_valid_for_lfd', {})
+
+    def getLfdPeerPorts(self):
+        """ getLfdPeerPorts :
+        Get a list of peer ports valid for LFD.
+
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/actions/get_peer_ports_valid_for_lfd', {})
 
     def getAllNeighbors(self, port_id_list=[]):
         """ getAllNeighbors :
@@ -629,7 +691,7 @@ class VisionWebApi(object):
 
         Sample usage:
         >>> nto.getAllNeighbors()
-
+        {u'P50': [{u'system_name': u'Ixia Vision One (Neo10 project)', u'port_description': u'', u'system_description': u'', u'expired': False, u'age': 1, u'chassis_id': u'00:1b:6e:04:8d:44', u'custom_tlvs': [], u'ttl': 120, u'port_id': u'P49', u'system_capabilities': u'', u'management_addresses': [], u'last_seen': 1577241872}], u'P49': [{u'system_name': u'Ixia Vision One (Neo10 project)', u'port_description': u'', u'system_description': u'', u'expired': False, u'age': 3, u'chassis_id': u'00:1b:6e:04:8d:44', u'custom_tlvs': [], u'ttl': 120, u'port_id': u'P50', u'system_capabilities': u'', u'management_addresses': [], u'last_seen': 1577241870}]}
         """
         # TODO TEST we got HTTP/200 with JSON back
         # TODO TEST we got 'message' key back
@@ -999,6 +1061,14 @@ class VisionWebApi(object):
         """
         return self._sendRequest('POST', '/api/actions/restart', args)
 
+    def restoreFirewall(self):
+        """ restoreFirewall :
+        This command will restore the default firewall rules to allow all servers to access NTO.
+        
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/actions/restore_firewall', None)
+        
     def revertSoftware(self):
         """ revertSoftware :
         This command revert software to it's previous version.
@@ -1007,8 +1077,7 @@ class VisionWebApi(object):
         >>> nto.revertSoftware()
         {u'message': u'Software revert requested. The system will be restarted. Visit the 7300 launch page in your browser to obtain the reverted client software.'}
         """
-        args={}
-        return self._sendRequest('POST', '/api/actions/revert_software', args)
+        return self._sendRequest('POST', '/api/actions/revert_software', None)
         
     def saveLogs(self, args):
         """ saveLogs :
@@ -1037,6 +1106,16 @@ class VisionWebApi(object):
         """
         args={}
         return self._sendRequest('POST', '/api/actions/set_ha_sync_port', args)
+
+    def sendSyntheticPackets(self, args):
+        """ sendSyntheticPackets :
+        Send synthetic packet to the destination addresses configured under TradeStream->Synthetic
+        Mesh Latency Settings. If no destination addresses are specified, then user will not be
+        allowed to send synthetic packets.
+
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/actions/send_synthetic_packets', args)
 
     def setIpConfig(self, args):
         """ setIpConfig :
@@ -1322,7 +1401,6 @@ class VisionWebApi(object):
         """
         return self._sendRequest('PUT', '/api/atip_resources/' + resource, args, False)
 
-
     ###################################################
     # Authentication
     ###################################################
@@ -1332,15 +1410,14 @@ class VisionWebApi(object):
         
         Sample usage:
         >>> nto.logout()
-        'User "admin" has logged out.'
+        'User -admin- has logged out.'
         """
-        args = {}
         try:
             # New API
-            data = self._sendRequest('POST', '/api/auth/logout', args)
+            data = self._sendRequest('POST', '/api/auth/logout', {}, False)
         except:
             # Old API
-            data = self._sendRequest('GET', '/api/auth/logout', args, False)
+            data = self._sendRequest('GET', '/api/auth/logout', {}, False)
         return data
 
     ###################################################
@@ -1393,7 +1470,7 @@ class VisionWebApi(object):
     ####################################
 
     # IFC Analysis Engine Resources
-    
+
     def disableAnalysisEngine(self, ae_id):
         """ disableAnalysisEngine :
         Detaches an IFC Analysis Engine resource from a filter.
@@ -1442,7 +1519,128 @@ class VisionWebApi(object):
         Sample usage:
         """
         return self._sendRequest('PUT', '/api/cte_ae_resources/' + ae_id, args, False)
+
+
+    # IFC Capture Resources
+
+    def getAllCteCaptures(self):
+        """ getAllCteCaptures :
+        Fetch a list containing the summaries for all the captures in the system.
+
+        Sample usage:
+        """
+        return self._sendRequest('GET', '/api/cte_capture_resources')
     
+    def getCteCapture(self, resource):
+        """ getCteCapture :
+        Fetch the properties of a capture object.
+
+        Sample usage:
+        """
+        return self._sendRequest('GET', '/api/cte_capture_resources/' + resource)
+
+    def deleteCteCaptureFile(self, resource, args):
+        """ deleteCteCaptureFile :
+        Deletes a capture file from a capture resource.
+
+        Sample usage:
+        """
+        return self._sendRequest('PUT', '/api/cte_capture_resources/' + resource + '/delete_file ', args, False)
+
+    def disableCteCapture(self, resource):
+        """ disableCteCapture :
+        Detaches an IFC Capture resource from a filter.
+
+        Sample usage:
+        """
+        args = {}
+        return self._sendRequest('PUT', '/api/cte_capture_resources/' + resource + '/disable', args, False)
+
+    def downloadCteCaptureFile(self, resource, args, local_file_name=None):
+        """ downloadCteCaptureFile :
+        Downloads a capture file of capture resource.
+
+        Sample usage:
+        """
+            
+        file_name = ''
+        if 'file_name' in args:
+            file_name = args['file_name']
+
+        file = self._sendRequest('POST', '/api/cte_capture_resources/' + resource + '/download_file', args, False)
+        if local_file_name is None:
+            local_file_name = file_name
+        f = open(local_file_name, 'wb')
+        f.write(file)
+        f.close()
+
+    def enableCteCapture(self, resource, args):
+        """ enableCteCapture :
+        Attaches an IFC Capture resource to a filter.
+
+        Sample usage:
+        """
+        return self._sendRequest('PUT', '/api/cte_capture_resources/' + resource + '/enable', args, False)
+
+    def listCteCaptureFiles(self, resource):
+        """ listCteCaptureFiles :
+        Fetch a list containing the summaries for all the captures in the system.
+
+        Sample usage:
+        """
+        args = {}
+        return self._sendRequest('GET', '/api/cte_capture_resources/' + resource + '/files', args)
+
+    def resetCteCaptureBuffer(self, resource):
+        """ resetCteCaptureBuffer :
+        Resets / clears the capture resource buffer.
+
+        Sample usage:
+        """
+        args = {}
+        return self._sendRequest('PUT', '/api/cte_capture_resources/' + resource + '/reset_buffer', args, False)
+
+    def saveCteBufferCapture(self, resource, args):
+        """ saveCteBufferCapture :
+        Search for a specific capture in the system by certain properties.
+
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/cte_capture_resources/' + resource + '/save_buffer', args)
+
+    def searchCteCapture(self, args):
+        """ searchCteCapture :
+        Search for a specific capture in the system by certain properties.
+
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/cte_capture_resources/search', args)
+
+    def startCteCapture(self, resource):
+        """ startCteCapture :
+        Starts a capture resource to capture packets via the attached filter.
+
+        Sample usage:
+        """
+        return self._sendRequest('PUT', '/api/cte_capture_resources/' + resource + '/start', {}, False)
+
+    def stopCteCapture(self, resource):
+        """ stopCteCapture :
+        Stops a capture resource to capture packets via the attached filter.
+
+        Sample usage:
+        """
+        return self._sendRequest('PUT', '/api/cte_capture_resources/' + resource + '/stop', {}, False)
+
+    def modifyCteCapture(self, resource, args):
+        """ modifyCteCapture :
+        Update the properties of an existing capture resource.
+
+        Sample usage:
+        """
+        return self._sendRequest('PUT', '/api/cte_capture_resources/' + resource, args, False)
+
+
     # CTE Cluster
 
     def getCteCluster(self, args):
@@ -1582,6 +1780,124 @@ class VisionWebApi(object):
         """
         return self._sendRequest('POST', '/api/cte_members/search', args)
 
+    def modifyCteMember(self, cte_member_id, args):
+        """ modifyCteMember :
+        Update the properties of an existing IFC Member.
+
+        Sample usage:
+        """
+        return self._sendRequest('PUT', '/api/cte_members/' + cte_member_id, args, False)
+
+
+    # CTE Monitors
+
+    def createCteMonitor(self, args):
+        """ createCteMonitor :
+        The IFC monitors resource.
+
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/cte_monitors', args)
+
+    def deleteCteMonitor(self, cte_monitor_id):
+        """ deleteCteMonitor :
+        Remove an IFC monitor.
+
+        Sample usage:
+        """
+        return self._sendRequest('DELETE', '/api/cte_monitors/' + cte_monitor_id, None, False)
+
+    def getCteMonitor(self, cte_monitor_id):
+        """ getCteMonitor :
+        Fetch the properties of an IFC monitor.
+
+        Sample usage:
+        """
+        return self._sendRequest('GET', '/api/cte_monitors/' + cte_monitor_id)
+
+    def getAllCteMonitors(self):
+        """ getAllCteMonitors :
+        Fetch a list containing the summaries for all IFC monitors.
+
+        Sample usage:
+        """
+        return self._sendRequest('GET', '/api/cte_monitors')
+
+    def searchCteMonitor(self, args):
+        """ searchCteMonitor :
+        Search a specific IFC monitor by certain properties.
+        
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/cte_monitors/search', args)
+
+    def modifyCteMonitor(self, cte_monitor_id, args):
+        """ modifyCteMonitor :
+        Update the properties of an existing IFC monitor.
+
+        Sample usage:
+        """
+        return self._sendRequest('PUT', '/api/cte_monitors/' + cte_monitor_id, args, False)
+
+
+    # CTE Netflow Resources
+
+    def disableCteNetflowResource(self, cte_netflow_resource_id, args):
+        """ disableCteNetflowResource :
+        Detaches an IFC Netflow resource from an IFC filter.
+        
+        Sample usage:
+        """
+        return self._sendRequest('PUT', '/api/cte_netflow_resources/' + cte_netflow_resource_id + '/disable', args, False)
+
+    def enableCteNetflowResource(self, cte_netflow_resource_id, args):
+        """ enableCteNetflowResource :
+        Attaches an IFC Netflow to an IFC filter.
+        
+        Sample usage:
+        """
+        return self._sendRequest('PUT', '/api/cte_netflow_resources/' + cte_netflow_resource_id + '/enable', args, False)
+
+    def getCteNetflowResourceBandwidth(self, cte_netflow_resource_id):
+        """ getCteNetflowResourceBandwidth :
+        Gets the bandwidth details for the IFC Netflow resource.
+        
+        Sample usage:
+        """
+        return self._sendRequest('GET', '/api/cte_netflow_resources/' + cte_netflow_resource_id + '/get_bandwidth_details')
+
+    def getCteNetflowResource(self, cte_netflow_resource_id):
+        """ getCteNetflowResource :
+        Fetch the properties of an IFC Netflow resource.
+
+        Sample usage:
+        """
+        return self._sendRequest('GET', '/api/cte_netflow_resources/' + cte_netflow_resource_id)
+
+    def getAllCteNetflowResources(self):
+        """ getAllCteNetflowResources :
+        Fetch a list containing the summaries for all IFC Netflow resources.
+
+        Sample usage:
+        """
+        return self._sendRequest('GET', '/api/cte_netflow_resources')
+
+    def searchCteNetflowResource(self, args):
+        """ searchCteNetflowResource :
+        Search a specific IFC Netflow resource by certain properties.
+
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/cte_netflow_resources/search', args)
+
+    def modifyCteNetflowResource(self, cte_netflow_resource_id, args):
+        """ modifyCteNetflowResource :
+        Update the properties of an existing IFC Netflow resource.
+
+        Sample usage:
+        """
+        return self._sendRequest('PUT', '/api/cte_netflow_resources/' + cte_netflow_resource_id, args, False)
+
 
     # CTE Operations
 
@@ -1712,14 +2028,22 @@ class VisionWebApi(object):
         """
         return self._sendRequest('POST', '/api/cte_operations/leave_topology', args)
 
-    def optimizeRoutes(self, args):
-        """ optimizeRoutes :
+    def optimizeCteRoutes(self, args):
+        """ optimizeCteRoutes :
         This command will perform route reconfiguration to ensure maximum filter coverage and
         better traffic load balancing across the cluster.
 
         Sample usage:
         """
         return self._sendRequest('POST', '/api/cte_operations/optimize_routes', args)
+
+    def resetCteEventRateLimiterStatus(self, args):
+        """ resetCteEventRateLimiterStatus :
+        Reset the event rate limiter status for the given event type.
+
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/cte_operations/cte_reset_event_rate_limiter_status', args)
 
 
     # CTE Port Groups
@@ -1792,10 +2116,10 @@ class VisionWebApi(object):
         Sample usage:
         """
         return self._sendRequest('POST', '/api/cte_ports/search', args)
-        
-    ####################################
-    # IFC Routes
-    ####################################
+
+
+    # CTE Routes
+
     def getAllIfcRoutes(self):
         """ getAllIfcRoutes :
         Fetch a list containing the summaries for all IFC routes.
@@ -1820,10 +2144,8 @@ class VisionWebApi(object):
         """
         return self._sendRequest('POST', '/api/cte_routes/search', args)
 
-
-    ####################################
     # CTE Remote Systems (deprecated)
-    ####################################
+
     def getAllCtes(self):
         """ getAllCtes :
         Fetch a list containing the summaries for all the CTE remote
@@ -2316,7 +2638,7 @@ class VisionWebApi(object):
         """
         return self._sendRequest('POST', '/api/gtp_fd_afm_resources/search', args)
 
-    def modifyGtpFdResource(self, group_id, args):
+    def modifyGtpFdResource(self, gtp_fd_resource_id, args):
         """ modifyGtpFdResource :
         Update the properties of an existing AFM resource.
 
@@ -2349,7 +2671,7 @@ class VisionWebApi(object):
 
         Sample usage:
         """
-        return self._sendRequest('GET', '/api/heartbeats/' + bypass_id)
+        return self._sendRequest('GET', '/api/heartbeats/' + heartbeat_id)
 
     def getAllHeartbeats(self):
         """ getAllHeartbeats :
@@ -2443,6 +2765,33 @@ class VisionWebApi(object):
         Sample usage:
         """
         return self._sendRequest('PUT', '/api/inline_service_chains/' + inline_id, args, False)
+
+    ###################################################
+    # Kubernetes Nodes
+    ###################################################
+    def getKubernetesNode(self, kubernetes_nodes_id):
+        """ getKubernetesNode :
+        Fetch the properties of a kubernetes node object.
+
+        Sample usage:
+        """
+        return self._sendRequest('GET', '/api/kubernetes_nodes/' + kubernetes_nodes_id)
+
+    def getAllKubernetesNodes(self):
+        """ getAllKubernetesNodes :
+        Fetch a list containing the summaries for all the kubernetes nodes in the system.
+
+        Sample usage:
+        """
+        return self._sendRequest('GET', '/api/kubernetes_nodes')
+
+    def resetFactoryDefaultKubernetesNode(self, kubernetes_nodes_id):
+        """ resetFactoryDefaultKubernetesNode :
+        Reset to factory default a specific kubernetes node from the Mako card.
+
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/kubernetes_nodes/' + kubernetes_nodes_id + '/reset_factory', args, False)
 
     ###################################################
     # Line Boards
@@ -3599,7 +3948,7 @@ class VisionWebApi(object):
         """
         return self._sendRequest('POST', '/api/actions/unpair_recovery_appliance', args)
 
-    def getNtpServersStatus(self, args):
+    def getNtpServersStatus(self):
         """ getNtpServersStatus:
         Retrieve NTP servers status configured for the Recovery Appliance.
 
@@ -3607,7 +3956,16 @@ class VisionWebApi(object):
 	    >>> gsc.getNTPServersStatus()
 	   TBD
         """
-        return self._sendRequest('GET', '/api/recovery_appliance/ntp_servers_status', args)
+        return self._sendRequest('GET', '/api/recovery_appliance/ntp_servers_status', {})
+
+    def getNumberSessions(self):
+        """ getNumberSessions:
+        Retrieve the number sessions backed up in the Recovery Appliance.
+
+        Sample usage:
+        TBD
+        """
+        return self._sendRequest('GET', '/api/recovery_appliance/get_num_sessions', {})
 
     def getRecoveryApplianceProperties(self, args):
         """ getRecoveryApplianceProperties:
