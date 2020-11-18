@@ -97,6 +97,22 @@
 #    - Fixed getAllNetserviceInstancesType, changed PUT to GET
 #    - Fixed restartNetserviceInstance, changed PUT to POST
 #
+# November 18, 2020:
+#    - Renamed createBypass to createInlineBypassConnector
+#    - Renamed getBypass to getInlineBypassConnector
+#    - Renamed getAllBypasses to getAllInlineBypasseConnectors
+#    - Renamed searchBypass to searchInlineBypassConnectors
+#    - Renamed modifyBypass to modifyInlineBypassConnector
+#    - Added deleteInlineBypassConnector
+#    - Renamed createInline to createInlineServiceChain
+#    - Renamed deleteInline to deleteInlineServiceChain
+#    - Renamed getInline to getInlineServiceChain
+#    - Renamed getAllInlines to getAllInlineServiceChains
+#    - Renamed searchInline to searchInlineServiceChains
+#    - Renamed modifyInline to modifyInlineServiceChain
+#    - Added all the methods for Inline Tool Connectors
+#    - Added all the methods for Inline Tool Resources
+#
 # COPYRIGHT 2019-2020 Keysight Technologies.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -315,7 +331,81 @@ class VisionWebApi(object):
         >>> nto.certificateManagement({'action': 'VIEW', 'certificate_use': 'DEFAULT_TLS_HTTPS'})
         {u'authentication': [{u'valid_from': u'May 28, 2015 10:06:25 AM GMT', u'sha1_fingerprint': u'D3:75:74:30:D7:D8:50:FE:73:2F:10:E3:62:59:1B:EF:83:24:44:58', u'signature_algorithm': u'SHA256WITHRSA', u'valid_to': u'May 25, 2025 10:06:25 AM GMT', u'version': u'3', u'signature': u'12:B5:F1:75:7B:26:86:B2:C7:CE:A8:CE:74:CC:E8:82:8A:A3:45:45:AB:D3:DF:35:96:6A:50:61:F7:70:32:51:0A:03:5E:D1:14:1E:19:8E:ED:1A:E0:71:6E:CD:79:3C:67:70:F1:66:73:6C:1E:4F:97:97:94:79:25:D9:16:9C:B5:C7:E1:84:2A:A4:D6:FE:74:E7:E1:B5:B7:E0:32:0F:12:EA:A0:9C:62:75:D8:70:63:1B:C2:04:67:B9:33:5B:FE:9F:73:20:8B:AF:92:EA:6E:1A:61:B7:79:2A:AF:9E:50:EF:7D:7D:CE:DD:55:BD:20:E3:D7:C3:49:EB:A1:7D:B7:C8:89:43:19:13:59:4D:B6:2F:B9:22:8C:06:5C:4D:BB:8C:03:5B:45:B2:6D:DC:B5:4A:80:9A:14:32:2B:44:9D:CF:83:D8:E8:81:B8:77:94:2D:71:D0:54:ED:47:53:45:06:28:39:86:7D:EF:9D:3D:DC:BD:06:E0:BC:EF:62:AA:85:02:20:D7:E6:61:4E:12:81:04:9E:42:AA:40:18:4F:1B:3D:41:62:9B:E4:36:A9:F8:39:5F:60:2B:C1:83:5D:CF:FE:9F:3B:C0:FD:62:A7:D6:47:9E:C4:73:02:CA:C6:86:F5:7B:52:5B:E8:58:3B:23:57:3F:EE:2C:09:E2', u'serial_number': u'1165506059 (4578360b)', u'md5_fingerprint': u'57:7E:03:2E:2B:67:AA:E7:75:44:AA:21:5C:8F:BE:A1', u'subject': u'CN=Ixia, OU=Ixia, O=Ixia, L=Calabasas, ST=California, C=US', u'issuer': u'CN=Ixia, OU=Ixia, O=Ixia, L=Calabasas, ST=California, C=US'}]}
         """
-        return self._sendRequest('POST', '/api/actions/certificates', args)
+        if 'action' in args:
+            if (args['action'] == 'VIEW') or (args['action'] == 'DELETE'):
+                return self._sendRequest('POST', '/api/actions/certificates', args)
+
+            elif args['action'] == 'UPLOAD':
+                # TLS/HTTPS
+                authentication = None
+                if 'authentication' in args:
+                    authentication = args['authentication']
+                    del args['authentication']
+
+                # Syslog - Client
+                client = None
+                if 'client' in args:
+                    client = args['client']
+                    del args['client']
+
+                # Syslog - Trsuted Root
+                trusted_root = None
+                if 'trusted_root' in args:
+                    trusted_root = args['trusted_root']
+                    del args['trusted_root']
+
+                boundary = "-----WebKitFormBoundary" + str(int(time.time())) + str(os.getpid())
+
+                buffer = bytearray()
+
+                # Set param
+                buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'\r\n')
+                buffer.extend(b'Content-Disposition: form-data; name="param"\r\n')
+                buffer.extend(b'Content-Type: application/json\r\n')
+                buffer.extend(b'\r\n')
+                buffer.extend(bytearray(json.dumps(args), 'ascii'))
+                buffer.extend(b'\r\n')
+                buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'\r\n')
+
+                # Set creative contents part.
+                if authentication:
+                    buffer.extend(b'Content-Disposition: form-data; name="authentication"; filename=' + bytearray(authentication, 'ascii') + b'\r\n')
+                    buffer.extend(b'Content-Type: application/octet-stream\r\n')
+                    buffer.extend(b'\r\n')
+                    # TODO: catch errors with opening file.
+                    buffer.extend(open(authentication, 'rb').read())
+                    buffer.extend(b'\r\n')
+
+                    buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'--\r\n')
+
+                if client:
+                    buffer.extend(b'Content-Disposition: form-data; name="client"; filename=' + bytearray(client, 'ascii') + b'\r\n')
+                    buffer.extend(b'Content-Type: application/octet-stream\r\n')
+                    buffer.extend(b'\r\n')
+                    # TODO: catch errors with opening file.
+                    buffer.extend(open(client, 'rb').read())
+                    buffer.extend(b'\r\n')
+
+                    buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'--\r\n')
+
+                if trusted_root:
+                    buffer.extend(b'Content-Disposition: form-data; name="trusted_root"; filename=' + bytearray(trusted_root, 'ascii') + b'\r\n')
+                    buffer.extend(b'Content-Type: application/octet-stream\r\n')
+                    buffer.extend(b'\r\n')
+                    # TODO: catch errors with opening file.
+                    buffer.extend(open(trusted_root, 'rb').read())
+                    buffer.extend(b'\r\n')
+
+                    buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'--\r\n')
+
+                buffer.extend(b'\r\n')
+
+                hdrs =  { 'Authentication' : self.token, 'Content-type' : 'multipart/form-data; boundary=' + boundary }
+                response = self.connection.urlopen('POST', '/api/actions/certificates', body=buffer, headers=hdrs)
+                #self._log (response.status, response.reason)
+                data = response.data
+                
+                return data
 
     def changeRole(self):
         """ changeRole :
@@ -1538,47 +1628,66 @@ class VisionWebApi(object):
         return data
 
     ###################################################
-    # Bypass connectors
+    # Bypass Connectors
     ###################################################
-    def createBypass(self, args):
-        """ createBypass :
+    def createInlineBypassConnector(self, args):
+        """ createInlineBypassConnector :
         Create a new Inline Bypass Connector in the system.
 
         Sample usage:
+        >>> nto.createInlineBypassConnector({"criteria": {"logical_operation": "AND"}, "filter_mode": "PASS_ALL", "name": "test bypass", "side_a_ports": [12], "side_b_ports": [13], "description": ""})
+        {'default_name': 'BPP1', 'id': 117, 'name': 'test bypass'}
         """
         return self._sendRequest('POST', '/api/bypass_connectors', args)
 
-    def getBypass(self, bypass_id):
-        """ getBypass :
+    def deleteInlineBypassConnector(self, bypass_id):
+        """ deleteInlineBypassConnector :
+        Remove an existing inline Tool Bypass from the system.
+
+        Sample usage:
+        >>> nto.deleteInlineBypassConnector('117')
+        b''
+        """
+        return self._sendRequest('DELETE', '/api/bypass_connectors/' + bypass_id, None, False)
+
+    def getInlineBypassConnector(self, bypass_id):
+        """ getInlineBypassConnector :
         Fetch the properties of an Inline Bypass Connector.
 
         Sample usage:
+        >>> nto.getInlineBypassConnector('test bypass')
+        {'connect_access_settings': {'groups': [], 'policy': 'INHERITED'}, 'created': {'caused_by': 'admin', 'details': None, 'time': 1605730853970, 'type': 'CREATE'}, 'criteria': {'logical_operation': 'AND'}, 'default_name': 'BPP1', 'description': '', 'filter_mode': 'PASS_ALL', 'history': None, 'id': 117, 'inline_service_chain_list': [], 'inline_service_chain_priority_list': [], 'lfd_enabled': False, 'local_lfd_ports': [], 'misc': {'access_map': {'CONNECT_ACCESS_SETTINGS': {'access_settings': {'groups': [], 'policy': 'INHERITED'}, 'affecting_ports': {'12': 'Allow All', '13': 'Allow All'}, 'affecting_resource': {}, 'current_value': 'All users. Derived from *P10 (in BPP1), P11 (in BPP1): Allow All', 'expression_text': 'All users.', 'operation_name': 'Connect Service Chains', 'operation_phrase': 'connect service chains to', 'tooltip': 'Inherit from Ports', 'user_names': '', 'users_statement': 'Anyone can perform'}, 'MODIFY_ACCESS_SETTINGS': {'access_settings': {'groups': [], 'policy': 'INHERITED'}, 'affecting_ports': {'12': 'Allow All', '13': 'Allow All'}, 'affecting_resource': {}, 'current_value': 'All users. Derived from *P10 (in BPP1), P11 (in BPP1): Allow All', 'expression_text': 'All users.', 'operation_name': 'Modify', 'operation_phrase': 'modify', 'tooltip': 'Inherit from Ports', 'user_names': '', 'users_statement': 'Anyone can perform'}}, 'access_props': ['MODIFY_ACCESS_SETTINGS', 'CONNECT_ACCESS_SETTINGS']}, 'mod_count': 1, 'modify_access_settings': {'groups': [], 'policy': 'INHERITED'}, 'name': 'test bypass', 'peer_lfd_ports': [], 'side_a_port_group': 115, 'side_a_ports': [12], 'side_b_port_group': 116, 'side_b_ports': [13], 'vlan': 2001, 'vlan_translation_setting': {'translation_map': []}}
         """
         return self._sendRequest('GET', '/api/bypass_connectors/' + bypass_id)
 
-    def getAllBypasses(self):
-        """ getAllBypasses :
+    def getAllInlineBypasseConnectors(self):
+        """ getAllInlineBypasseConnectors :
         Fetch a list containing the summaries for all the Inline Bypass Connectors in the system.
 
         Sample usage:
+        >>> nto.getAllInlineBypasseConnectors()
+        [{'id': 117, 'name': 'test bypass'}]
         """
         return self._sendRequest('GET', '/api/bypass_connectors')
 
-    def searchBypass(self, args):
-        """ searchBypass :
+    def searchInlineBypassConnectors(self, args):
+        """ searchInlineBypassConnectors :
         Search for a specific Inline Bypass Connector in the system by certain properties.
 
         Sample usage:
+        >>> nto.searchInlineBypassConnectors({"filter_mode": "PASS_ALL"})
+        [{'connect_access_settings': {'groups': [], 'policy': 'INHERITED'}, 'created': {'caused_by': 'admin', 'details': None, 'time': 1605730853970, 'type': 'CREATE'}, 'criteria': {'logical_operation': 'AND'}, 'default_name': 'BPP1', 'description': '', 'filter_mode': 'PASS_ALL', 'history': None, 'id': 117, 'inline_service_chain_list': [], 'inline_service_chain_priority_list': [], 'lfd_enabled': False, 'local_lfd_ports': [], 'misc': {'access_map': {'CONNECT_ACCESS_SETTINGS': {'access_settings': {'groups': [], 'policy': 'INHERITED'}, 'affecting_ports': {'12': 'Allow All', '13': 'Allow All'}, 'affecting_resource': {}, 'current_value': 'All users. Derived from *P10 (in BPP1), P11 (in BPP1): Allow All', 'expression_text': 'All users.', 'operation_name': 'Connect Service Chains', 'operation_phrase': 'connect service chains to', 'tooltip': 'Inherit from Ports', 'user_names': '', 'users_statement': 'Anyone can perform'}, 'MODIFY_ACCESS_SETTINGS': {'access_settings': {'groups': [], 'policy': 'INHERITED'}, 'affecting_ports': {'12': 'Allow All', '13': 'Allow All'}, 'affecting_resource': {}, 'current_value': 'All users. Derived from *P10 (in BPP1), P11 (in BPP1): Allow All', 'expression_text': 'All users.', 'operation_name': 'Modify', 'operation_phrase': 'modify', 'tooltip': 'Inherit from Ports', 'user_names': '', 'users_statement': 'Anyone can perform'}}, 'access_props': ['MODIFY_ACCESS_SETTINGS', 'CONNECT_ACCESS_SETTINGS']}, 'mod_count': 1, 'modify_access_settings': {'groups': [], 'policy': 'INHERITED'}, 'name': 'test bypass', 'peer_lfd_ports': [], 'side_a_port_group': 115, 'side_a_ports': [12], 'side_b_port_group': 116, 'side_b_ports': [13], 'vlan': 2001, 'vlan_translation_setting': {'translation_map': []}}]
+
         """
         return self._sendRequest('POST', '/api/bypass_connectors/search', args)
 
-    def modifyBypass(self, bypass_id, args):
-        """ modifyBypass:
+    def modifyInlineBypassConnector(self, bypass_id, args):
+        """ modifyInlineBypassConnector:
         Update the properties of an existing Inline Bypass Connector.
 
         Sample usage:
-        >>> nto.modifyAtip('L2-ATIP', {'description': 'ATIP at slot #2'})
-        ''
+        >>> nto.modifyInlineBypassConnector('117', {"side_b_ports": [14]})
+        b''
         """
         return self._sendRequest('PUT', '/api/bypass_connectors/' + bypass_id, args, False)
 
@@ -2832,7 +2941,7 @@ class VisionWebApi(object):
         return self._sendRequest('PUT', '/api/heartbeats/' + heartbeat_id, args, False)
 
     ###################################################
-    # Inline service chains
+    # Service Chains
     ###################################################
     def applyToolSharingMapInline(self, inline_id, args):
         """ applyToolSharingMapInline :
@@ -2852,51 +2961,63 @@ class VisionWebApi(object):
         """
         return self._sendRequest('PUT', '/api/inline_service_chains/'+ inline_id + '/applyVlanTranslationMap', args, False)
 
-    def createInline(self, args):
-        """ createInline :
+    def createInlineServiceChain(self, args):
+        """ createInlineServiceChain :
         Create a new inline service chain in the system.
 
         Sample usage:
+        >>> nto.createInlineServiceChain({"bypass_connector_list": [120], "criteria": {"logical_operation": "AND", "vlan": [{"priority": None, "vlan_id": "100" }]}, "direction": "BIDI", "filter_mode": "PASS_BY_CRITERIA", "name": "Secure SC Python", "tool_resource_map": [{"tool_resource_failure_action": "FAIL_CLOSED", "tool_resource_id": 114}], "tool_sharing_enable": False, "vlan_translation_enabled": False})
+        {'default_name': 'SC1', 'id': 121, 'name': 'Secure SC Python'}
         """
         return self._sendRequest('POST', '/api/inline_service_chains', args)
 
-    def deleteInline(self, inline_id):
-        """ deleteInline :
+    def deleteInlineServiceChain(self, inline_id):
+        """ deleteInlineServiceChain :
         Remove an existing inline service chain from the system.
 
         Sample usage:
+        >>> nto.deleteInlineServiceChain('121')
+        b''
         """
         return self._sendRequest('DELETE', '/api/inline_service_chains/' + inline_id, None, False)
 
-    def getInline(self, inline_id):
-        """ getInline :
+    def getInlineServiceChain(self, inline_id):
+        """ getInlineServiceChain :
         Fetch the properties of a inline service chain object.
 
         Sample usage:
+        >>> nto.getInlineServiceChain('126')
+        {'bypass_connector_list': [120], 'connect_access_settings': {'groups': [], 'policy': 'INHERITED'}, 'created': {'caused_by': 'admin', 'details': None, 'time': 1605732093043, 'type': 'CREATE'}, 'criteria': {'logical_operation': 'AND', 'vlan': [{'priority': None, 'vlan_id': '100'}]}, 'default_name': 'SC1', 'description': None, 'direction': 'BIDI', 'filter_list': [127, 128, 129, 130], 'filter_mode': 'PASS_BY_CRITERIA', 'history': [{'caused_by': 'admin', 'details': None, 'props': ['INLINE_TOOL_RESOURCE_MAP'], 'time': 1605732093110, 'type': 'MODIFY'}], 'id': 126, 'misc': {'access_map': {'CONNECT_ACCESS_SETTINGS': {'access_settings': {'groups': [], 'policy': 'INHERITED'}, 'affecting_ports': {'12': 'Allow All', '13': 'Allow All'}, 'affecting_resource': {}, 'current_value': 'All users. Derived from *BPP1: Inherited *P10 (in BPP1), P11 (in BPP1): Allow All', 'expression_text': 'All users.', 'operation_name': 'Connect Bypass Port Pairs', 'operation_phrase': 'connect bypass port pairs to', 'tooltip': 'Inherit from BPPs', 'user_names': '', 'users_statement': 'Anyone can perform'}, 'MODIFY_ACCESS_SETTINGS': {'access_settings': {'groups': [], 'policy': 'INHERITED'}, 'affecting_ports': {'12': 'Allow All', '13': 'Allow All'}, 'affecting_resource': {}, 'current_value': 'All users. Derived from *BPP1: Inherited *P10 (in BPP1), P11 (in BPP1): Allow All', 'expression_text': 'All users.', 'operation_name': 'Modify', 'operation_phrase': 'modify', 'tooltip': 'Inherit from BPPs', 'user_names': '', 'users_statement': 'Anyone can perform'}}, 'access_props': ['MODIFY_ACCESS_SETTINGS', 'CONNECT_ACCESS_SETTINGS'], 'warning': None}, 'mod_count': 1, 'modify_access_settings': {'groups': [], 'policy': 'INHERITED'}, 'name': 'Secure SC Python', 'tool_resource_map': [{'tool_resource_failure_action': 'FAIL_CLOSED', 'tool_resource_id': '114'}], 'tool_sharing_enable': False, 'vlan_translation_enabled': False}
         """
         return self._sendRequest('GET', '/api/inline_service_chains/' + inline_id)
 
-    def getAllInlines(self):
-        """ getAllInlines :
+    def getAllInlineServiceChains(self):
+        """ getAllInlineServiceChains :
         Fetch a list containing the summaries for all the inline service chains in the system.
 
         Sample usage:
+        >>> nto.getAllInlineServiceChains()
+        [{'id': 126, 'name': 'Secure SC Python'}]
         """
         return self._sendRequest('GET', '/api/inline_service_chains')
 
-    def searchInline(self, args):
-        """ searchInline :
+    def searchInlineServiceChains(self, args):
+        """ searchInlineServiceChains :
         Search for a specific inline service chain in the system by certain properties.
 
         Sample usage:
+        >>> nto.searchInlineServiceChains({"direction": "BIDI"})
+        [{'bypass_connector_list': [120], 'connect_access_settings': {'groups': [], 'policy': 'INHERITED'}, 'created': {'caused_by': 'admin', 'details': None, 'time': 1605732093043, 'type': 'CREATE'}, 'criteria': {'logical_operation': 'AND', 'vlan': [{'priority': None, 'vlan_id': '100'}]}, 'default_name': 'SC1', 'description': None, 'direction': 'BIDI', 'filter_list': [127, 128, 129, 130], 'filter_mode': 'PASS_BY_CRITERIA', 'history': [{'caused_by': 'admin', 'details': None, 'props': ['INLINE_TOOL_RESOURCE_MAP'], 'time': 1605732093110, 'type': 'MODIFY'}], 'id': 126, 'misc': {'access_map': {'CONNECT_ACCESS_SETTINGS': {'access_settings': {'groups': [], 'policy': 'INHERITED'}, 'affecting_ports': {'12': 'Allow All', '13': 'Allow All'}, 'affecting_resource': {}, 'current_value': 'All users. Derived from *BPP1: Inherited *P10 (in BPP1), P11 (in BPP1): Allow All', 'expression_text': 'All users.', 'operation_name': 'Connect Bypass Port Pairs', 'operation_phrase': 'connect bypass port pairs to', 'tooltip': 'Inherit from BPPs', 'user_names': '', 'users_statement': 'Anyone can perform'}, 'MODIFY_ACCESS_SETTINGS': {'access_settings': {'groups': [], 'policy': 'INHERITED'}, 'affecting_ports': {'12': 'Allow All', '13': 'Allow All'}, 'affecting_resource': {}, 'current_value': 'All users. Derived from *BPP1: Inherited *P10 (in BPP1), P11 (in BPP1): Allow All', 'expression_text': 'All users.', 'operation_name': 'Modify', 'operation_phrase': 'modify', 'tooltip': 'Inherit from BPPs', 'user_names': '', 'users_statement': 'Anyone can perform'}}, 'access_props': ['MODIFY_ACCESS_SETTINGS', 'CONNECT_ACCESS_SETTINGS'], 'warning': None}, 'mod_count': 1, 'modify_access_settings': {'groups': [], 'policy': 'INHERITED'}, 'name': 'Secure SC Python', 'tool_resource_map': [{'tool_resource_failure_action': 'FAIL_CLOSED', 'tool_resource_id': '114'}], 'tool_sharing_enable': False, 'vlan_translation_enabled': False}]
         """
         return self._sendRequest('POST', '/api/inline_service_chains/search', args)
 
-    def modifyInline(self, inline_id, args):
-        """ modifyInline:
+    def modifyInlineServiceChain(self, inline_id, args):
+        """ modifyInlineServiceChain:
         Update the properties of an existing inline service chain.
 
         Sample usage:
+        >>> nto.modifyInlineServiceChain('126', {"description": "Chain Descr"})
+        b''
         """
         return self._sendRequest('PUT', '/api/inline_service_chains/' + inline_id, args, False)
 
@@ -3677,6 +3798,141 @@ class VisionWebApi(object):
         ''
         """
         return self._sendRequest('PUT', '/api/system/' + system_id, args, False)
+
+    ####################################
+    # Tool Connectors
+    ####################################
+    def createInlineToolConnector(self, args):
+        """ createInlineToolConnector :
+        Create a new Inline Tool Connector in the system.
+
+        Sample usage:
+        >>> nto.createInlineToolConnector({'assigned_status': 'ACTIVE', 'description': 'Tool Connector', 'name': 'Test Tool Connector', 'side_a_port': 17, 'side_b_port': 18, 'sync_current_status': True})
+        {'default_name': 'ITC1', 'id': 104, 'name': 'Test Tool Connector'}
+        """
+        return self._sendRequest('POST', '/api/tool_connectors', args)
+
+    def deleteInlineToolConnector(self, tool_connector_id):
+        """ deleteInlineToolConnector :
+        Remove an existing inline Tool Connector from the system.
+
+        Sample usage:
+        >>> nto.deleteInlineToolConnector('101')
+        b''
+        """
+        return self._sendRequest('DELETE', '/api/tool_connectors/' + tool_connector_id, None, False)
+
+    def getInlineToolConnector(self, tool_conector_id):
+        """ getInlineToolConnector :
+        Fetch the properties of an Inline Tool Connector.
+        To request only select properties (partial response), append to the URL the query parameter
+        '?properties=value', where value is comma-separated list to select multiple fields for example:
+        /api/resource_type/{object-id}?properties=description,name.
+        Query Parameter is optional, see section Partial get under Usage Examples.
+
+        Sample usage:
+        >>> nto.getInlineToolConnector('101')
+        {'assigned_status': 'ACTIVE', 'created': {'caused_by': 'admin', 'details': None, 'time': 1605729055930, 'type': 'CREATE'}, 'current_status': 'ACTIVE', 'default_name': 'ITC1', 'description': 'Tool Connector', 'history': None, 'id': 101, 'mod_count': 0, 'name': 'Test Tool Connector', 'side_a_port': 10, 'side_a_port_group': None, 'side_b_port': 11, 'side_b_port_group': None, 'sync_current_status': True, 'tool_resource_list': []}
+        """
+        return self._sendRequest('GET', '/api/tool_connectors/' + tool_conector_id)
+
+    def getAllInlineToolConnectors(self):
+        """ getAllInlineToolConnectors :
+        Fetch a list containing the summaries for all the Inline Tool Connectors in the system.
+
+        Sample usage:
+        >>> nto.getAllInlineToolConnectors()
+        [{'id': 101, 'name': 'Test Tool Connector'}]
+        """
+        return self._sendRequest('GET', '/api/tool_connectors')
+
+    def searchInlineToolConnectors(self, args):
+        """ searchnlineToolConnectors :
+        Search for a specific Inline Tool Connector in the system by certain properties.
+
+        Sample usage:
+        >>> nto.searchInlineToolConnectors({'assigned_status': 'ACTIVE'})
+        [{'assigned_status': 'ACTIVE', 'created': {'caused_by': 'admin', 'details': None, 'time': 1605729055930, 'type': 'CREATE'}, 'current_status': 'ACTIVE', 'default_name': 'ITC1', 'description': 'Tool Connector', 'history': None, 'id': 101, 'mod_count': 0, 'name': 'Test Tool Connector', 'side_a_port': 10, 'side_a_port_group': None, 'side_b_port': 11, 'side_b_port_group': None, 'sync_current_status': True, 'tool_resource_list': []}]
+        """
+        return self._sendRequest('POST', '/api/tool_connectors/search', args)
+
+    def modifyInlineToolConnector(self, tool_conector_id, args):
+        """ modifyInlineToolConnector :
+        Update the properties of an existing Inline Tool Connector.
+
+        Sample usage:
+        >>> nto.modifyInlineToolConnector('101', {'description': 'new'})
+        b''
+        """
+        return self._sendRequest('PUT', '/api/tool_connectors/' + tool_conector_id, args, False)
+
+    ####################################
+    # Tool Resources
+    ####################################
+    def createInlineToolResource(self, args):
+        """ createInlineToolResource :
+        Create a new inline tool resource in the system.
+
+        Sample usage:
+        >>> nto.createInlineToolResource({"name": "test resource", "tool_connector_list": [{"assigned_status": "ACTIVE", "description": "test resource descr", "name": "test connector", "side_a_port": 10, "side_b_port": 11, "sync_current_status": True}]})
+        {'default_name': 'ITR1', 'id': 109, 'name': 'test resource'}
+        """
+        return self._sendRequest('POST', '/api/tool_resources', args)
+
+    def deleteInlineToolResource(self, tool_resource_id):
+        """ deleteInlineToolConnector :
+        Remove an existing inline tool resource from the system.
+
+        Sample usage:
+        >>> nto.deleteInlineToolResource('New Name')
+        b''
+        """
+        return self._sendRequest('DELETE', '/api/tool_resources/' + tool_resource_id, None, False)
+
+    def getInlineToolResource(self, tool_resource_id):
+        """ getInlineToolConnector :
+        Fetch the properties of a inline tool resource object.
+        To request only select properties (partial response), append to the URL the query
+        parameter '?properties=value', where value is comma-separated list to select multiple
+        fields for example:
+        /api/resource_type/{object-id}?properties=description,name.
+        Query Parameter is optional, see section Partial get under Usage Examples.
+
+        Sample usage:
+        >>> nto.getInlineToolResource('109')
+        {'alert_type': 'NO_ALERT', 'created': {'caused_by': 'admin', 'details': None, 'time': 1605730117523, 'type': 'CREATE'}, 'default_name': 'ITR1', 'description': None, 'heartbeat_id': None, 'history': None, 'id': 109, 'ignore_mod_count': True, 'inline_service_chain_priority_list': [], 'is_mac_reversed_rhb': False, 'misc': {'access_map': {'MODIFY_ACCESS_SETTINGS': {'access_settings': {'groups': [], 'policy': 'INHERITED'}, 'affecting_ports': {'10': 'Allow All', '11': 'Allow All'}, 'affecting_resource': {}, 'current_value': 'All users. Derived from *P08, P09: Allow All', 'expression_text': 'All users.', 'operation_name': 'Modify', 'operation_phrase': 'modify', 'tooltip': 'Inherit from Ports', 'user_names': '', 'users_statement': 'Anyone can perform'}}, 'access_props': ['MODIFY_ACCESS_SETTINGS']}, 'mod_count': 0, 'modify_access_settings': {'groups': [], 'policy': 'INHERITED'}, 'name': 'test resource', 'negative_heartbeat_id': None, 'state': 'ACTIVE', 'tool_connector_list': [{'assigned_status': 'ACTIVE', 'connector_type': 'TOOL_CONNECTOR', 'current_status': 'ACTIVE', 'name': 'test connector', 'side_a_port': '10', 'side_b_port': '11', 'sync_current_status': True}]}
+        """
+        return self._sendRequest('GET', '/api/tool_resources/' + tool_resource_id)
+
+    def getAllInlineToolResources(self):
+        """ getAllInlineToolResources :
+        Fetch a list containing the summaries for all the inline tool resources in the system.
+
+        Sample usage:
+        >>> nto.getAllInlineToolResources()
+        [{'id': 109, 'name': 'test resource'}]
+        """
+        return self._sendRequest('GET', '/api/tool_resources')
+
+    def searchInlineToolResources(self, args):
+        """ searchInlineToolResources :
+        Search for a specific inline tool resource in the system by certain properties.
+
+        Sample usage:
+        >>> nto.searchInlineToolResources({'heartbeat_id': None})
+        [{'alert_type': 'NO_ALERT', 'created': {'caused_by': 'admin', 'details': None, 'time': 1605730117523, 'type': 'CREATE'}, 'default_name': 'ITR1', 'description': None, 'heartbeat_id': None, 'history': None, 'id': 109, 'ignore_mod_count': True, 'inline_service_chain_priority_list': [], 'is_mac_reversed_rhb': False, 'misc': {'access_map': {'MODIFY_ACCESS_SETTINGS': {'access_settings': {'groups': [], 'policy': 'INHERITED'}, 'affecting_ports': {'10': 'Allow All', '11': 'Allow All'}, 'affecting_resource': {}, 'current_value': 'All users. Derived from *P08, P09: Allow All', 'expression_text': 'All users.', 'operation_name': 'Modify', 'operation_phrase': 'modify', 'tooltip': 'Inherit from Ports', 'user_names': '', 'users_statement': 'Anyone can perform'}}, 'access_props': ['MODIFY_ACCESS_SETTINGS']}, 'mod_count': 0, 'modify_access_settings': {'groups': [], 'policy': 'INHERITED'}, 'name': 'test resource', 'negative_heartbeat_id': None, 'state': 'ACTIVE', 'tool_connector_list': [{'assigned_status': 'ACTIVE', 'connector_type': 'TOOL_CONNECTOR', 'current_status': 'ACTIVE', 'name': 'test connector', 'side_a_port': '10', 'side_b_port': '11', 'sync_current_status': True}]}]
+        """
+        return self._sendRequest('POST', '/api/tool_resources/search', args)
+
+    def modifyInlineToolResource(self, tool_resource_id, args):
+        """ modifyInlineToolConnector :
+        Update the properties of an existing inline tool resource.
+
+        Sample usage:
+        >>> nto.modifyInlineToolResource('109', {'name': 'New Name'})
+        b''
+        """
+        return self._sendRequest('PUT', '/api/tool_resources/' + tool_resource_id, args, False)
 
     ####################################
     # Users
