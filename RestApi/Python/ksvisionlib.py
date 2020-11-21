@@ -113,6 +113,10 @@
 #    - Added all the methods for Inline Tool Connectors
 #    - Added all the methods for Inline Tool Resources
 #
+# November 21, 2020:
+#    - Added Vision NPB v5.6.1 Changes:
+#        - Added method updateSingleIpAddress
+#
 # COPYRIGHT 2019-2020 Keysight Technologies.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -1351,6 +1355,15 @@ class VisionWebApi(object):
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/swap_port_licenses', args, False)
+
+    def updateSingleIpAddress(self, args):
+        """ updateSingleIpAddress :
+        This action allows a single IP address to be added to or removed from a filter
+        with an existing IP address criterion.
+
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/actions/update_single_ip_addr', args, False)
 
     def validateAuthCalls(self):
         """ validateAuthCalls :
