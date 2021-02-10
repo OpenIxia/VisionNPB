@@ -13,7 +13,7 @@
 #   - Using certificates in urllib3
 #     http://stackoverflow.com/questions/23954120/using-certificates-in-urllib3
 #
-# History:
+# History:i#
 #  February 8, 2019:
 #    - Initial version.
 #    - In sync with the Network Visibility Software 5.0.0,
@@ -117,7 +117,27 @@
 #    - Added Vision NPB v5.6.1 Changes:
 #        - Added method updateSingleIpAddress
 #
-# COPYRIGHT 2019-2020 Keysight Technologies.
+# December 18, 2020:
+#    - Added Vision NPB v5.7.0 Changes:
+#        - Added all the methods for Aggregator Resources
+#        - Added all the methods for GSC Resources
+#        - Added method resumeItrTraffic
+#        - Added method backupGscConfig
+#        - Added method restoreGscConfig
+#        - Added method discoverCteConnections
+#        - Added method updateCteUpdateSingleIpAddress
+#    - Added timeout and reties to the VisionWebApi __init__ function
+#    - Added the retries decorators
+#
+# January 23, 2021
+#    - Added method modifyCtePort
+#    - Added method createCtePortGroup
+#    - Added method deleteCtePortGroup
+#    - Added method disableCtePortGroup
+#    - Added method enableCtePortGroup
+#    - Added method modifyCtePortGroup
+#
+# COPYRIGHT 2019-2021 Keysight Technologies.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -181,7 +201,7 @@ class UnknownError(KeysightNpbExceptions):
 
 class VisionWebApi(object):
 
-    def __init__(self, host, username, password, port=8000, debug=False, logFile=None):
+    def __init__(self, host, username, password, port=8000, debug=False, logFile=None, timeout=30, retries=2):
         #urllib3.disable_warnings()
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
         self.host = host
@@ -194,13 +214,14 @@ class VisionWebApi(object):
         self.token_headers = ''
         self.connection = ''
         self.logFile = logFile
-        self.__request_timeout = 30
+        self.__request_timeout = timeout
+        self.__request_retries = retries
 
         self.auth_b64 = base64.b64encode(bytearray(username + ":" + password, 'ascii')).decode('ascii')
         self.password_headers = { 'Authorization' : 'Basic ' + self.auth_b64, 'Content-type' : 'application/json' }
 
         #self.connection = urllib3.connectionpool.HTTPSConnectionPool(host, port=port, ssl_version='TLSv1_2')
-        self.connection = urllib3.connectionpool.HTTPSConnectionPool(host, port=port, cert_reqs='CERT_NONE', ca_certs=None, timeout=self.__request_timeout, retries=2)
+        self.connection = urllib3.connectionpool.HTTPSConnectionPool(host, port=port, cert_reqs='CERT_NONE', ca_certs=None, timeout=self.__request_timeout, retries=self.__request_retries)
 
         try:
             response = self.connection.urlopen('GET', '/api/auth', headers=self.password_headers)
@@ -223,7 +244,7 @@ class VisionWebApi(object):
         self.token_headers = { 'Authentication' : self.token, 'Content-type' : 'application/json' }
 
     def __str__(self):
-        return "VisionWebApi(host='{:s}', port={:d}, user='{:s}', password='{:s}', auth64='{:s}', password_hdrs='{:s}', token_hdrs='{:s}', connection='{:s}', debug={:s}, timeout={:d})".format(self.host, self.port,  self.user, self.password, self.auth_b64, str(self.password_headers), str(self.token_headers), str(self.connection), str(self.__debug), self.__request_timeout)
+        return "VisionWebApi(host='{:s}', port={:d}, user='{:s}', password='{:s}', auth64='{:s}', password_hdrs='{:s}', token_hdrs='{:s}', connection='{:s}', debug={:s}, timeout={:d}, retries={:d})".format(self.host, self.port,  self.user, self.password, self.auth_b64, str(self.password_headers), str(self.token_headers), str(self.connection), str(self.__debug), self.__request_timeout, self.__request_retries)
 
     def __repr__(self):
         return str(self)
@@ -289,6 +310,17 @@ class VisionWebApi(object):
         """ Set the request timeout """
         self.__request_timeout = timeout
         self.connection.timeout = urllib3.Timeout(connect=timeout, read=timeout)
+
+    @property
+    def request_retries(self):
+        """ Get the request retries """
+        return self.__request_retries
+
+    @request_retries.setter
+    def request_retries(self, retries):
+        """ Set the request retries """
+        self.__request_retries = retries
+        self.connection.retries = urllib3.Retry(connect=retries, read=retries)
 
     def authenticate(self):
         """ authenticate :
@@ -1382,6 +1414,30 @@ class VisionWebApi(object):
         """
         return self._sendRequest('POST', '/api/actions/update_fabric_ports', args)
 
+    def resumeItrTraffic(self, args):
+        """ resumeItrTraffic :
+        This command will resume traffic on ITR based on ITR id.
+
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/actions/resume_itr_traffic', args, False)
+
+    def backupGscConfig(self):
+        """ backupGscConfig :
+        Backup GSC configuration.
+
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/actions/backup_gsc_config', {})
+
+    def restoreGscConfig(self):
+        """ backupGscConfig :
+        Restore GSC configuration.
+
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/actions/restore_gsc_config', {})
+
     ###################################################
     # Capture Resources
     ###################################################
@@ -1558,6 +1614,63 @@ class VisionWebApi(object):
         return self._sendRequest('PUT', '/api/capture_resources/' + resource, args, False)
 
     ###################################################
+    # Aggregator Resources
+    ###################################################
+    def getAllAggregators(self):
+        """ getAllAggregators :
+        Fetch a list containing the summaries for all the Aggregator resources in the system.
+
+        Sample usage:
+        """
+        return self._sendRequest('GET', '/api/aggregator_resources')
+
+    def getAggregator(self, resource):
+        """ getAggregator :
+        Fetch the properties of an Aggregator resource object.
+        To request only select properties (partial response), append to the URL the query
+        parameter '?properties=value', where value is comma-separated list to select
+        multiple fields for ex- /api/resource_type/{object-id}?properties=description,name.
+        Query Parameter is optional.
+
+        Sample usage:
+        """
+        return self._sendRequest('GET', '/api/aggregator_resources/' + resource)
+
+    def disableAggregator(self, resource, args):
+        """ disableAggregator :
+        Disables an Aggregator resource by disconnecting the attached port group.
+
+        Sample usage:
+        ''
+        """
+        return self._sendRequest('PUT', '/api/aggregator_resources/' + resource + '/disable', args, False)
+
+    def enableAggregator(self, resource, args):
+        """ enableAggregator :
+        Enables an Aggregator resource by attaching a port group to it.
+
+        Sample usage:
+        ''
+        """
+        return self._sendRequest('PUT', '/api/aggregator_resources/' + resource + '/enable', args, False)
+
+    def searchAggregator(self, args):
+        """ searchAggregator :
+        Search for a specific Aggregator resource in the system by certain properties.
+
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/aggregator_resources/search', args)
+
+    def modifyAggregator(self, resource, args):
+        """ modifyAggregator:
+        Update the properties of an existing Aggregator resource.
+
+        Sample usage:
+        """
+        return self._sendRequest('PUT', '/api/aggregator_resources/' + resource, args, False)
+
+    ###################################################
     # ATIP Resources
     ###################################################
     def getAllAtips(self):
@@ -1571,7 +1684,7 @@ class VisionWebApi(object):
         return self._sendRequest('GET', '/api/atip_resources')
 
     def getAtip(self, resource):
-        """ getCapture :
+        """ getAtip :
         Fetch the properties of an ATIP resource.
 
         Sample usage:
@@ -2194,6 +2307,14 @@ class VisionWebApi(object):
         """
         return self._sendRequest('POST', '/api/cte_operations/disband_topology', args)
 
+    def discoverCteConnections(self):
+        """ discoverCteConnections :
+        Discover and create direct connections between members in IFC topology.
+
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/cte_operations/discover_connections')
+
     def exportCteTopology(self, args):
         """ exportCteTopology :
         Export topology configuration to a file.
@@ -2301,8 +2422,49 @@ class VisionWebApi(object):
         """
         return self._sendRequest('POST', '/api/cte_operations/cte_reset_event_rate_limiter_status', args)
 
+    def updateCteUpdateSingleIpAddress(self, args):
+        """ updateCteUpdateSingleIpAddress :
+        This action allows a single IP address to be added to or removed
+        from a filter with an existing IP address criterion.
+
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/cte_operations/cte_update_single_ip_addr', args)
+
 
     # CTE Port Groups
+
+    def createCtePortGroup(self, args):
+        """ createCtePortGroup :
+        Create a new IFC port group in the system.
+
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/cte_port_groups', args)
+
+    def deleteCtePortGroup(self, cte_port_group_id):
+        """ deleteCtePortGroup :
+        Remove an IFC port group.
+
+        Sample usage:
+        """
+        return self._sendRequest('DELETE', '/api/cte_port_groups/' + cte_port_group_id + '/disable', {}, False)
+
+    def disableCtePortGroup(self, cte_port_group_id):
+        """ disableCtePortGroup :
+        Disables an IFC port group by disabling all contained IFC ports.
+
+        Sample usage:
+        """
+        return self._sendRequest('PUT', '/api/cte_port_groups/' + cte_port_group_id, {}, False)
+
+    def enableCtePortGroup(self, cte_port_group_id):
+        """ enableCtePortGroup :
+        Enables an IFC port group by enabling all contained IFC ports.
+
+        Sample usage:
+        """
+        return self._sendRequest('PUT', '/api/cte_port_groups/' + cte_port_group_id + '/enable', {}, False)
 
     def getCtePortGroup(self, cte_port_group_id):
         """ getCtePortGroup :
@@ -2327,6 +2489,14 @@ class VisionWebApi(object):
         Sample usage:
         """
         return self._sendRequest('POST', '/api/cte_port_groups/search', args)
+
+    def modifyCtePortGroup(self, cte_port_group_id, args):
+        """ modifyCtePortGroup :
+        Update the properties of an existing IFC port group.
+
+        Sample usage:
+        """
+        return self._sendRequest('PUT', '/api/cte_port_groups/' + cte_port_group_id, args, False)
 
 
     # CTE Ports
@@ -2372,6 +2542,14 @@ class VisionWebApi(object):
         Sample usage:
         """
         return self._sendRequest('POST', '/api/cte_ports/search', args)
+
+    def modifyCtePort(self, cte_port_id, args):
+        """ modifyCtePort :
+        Update the properties of an existing IFC port.
+
+        Sample usage:
+        """
+        return self._sendRequest('PUT', '/api/cte_ports/' + cte_port_id, args, False)
 
 
     # CTE Routes
@@ -2842,6 +3020,77 @@ class VisionWebApi(object):
         [{u'id': 367, u'name': u'Network Mgmt'}]
         """
         return self._sendRequest('POST', '/api/groups/search', args)
+
+    ####################################
+    # GSC resources
+    ####################################
+    def disableGscResource(self, gsc_resource_id, args):
+        """ disableGscResource :
+        Disables an AFM resource by disconnecting the attached port, port group or filter.
+
+        Sample usage:
+        """
+        return self._sendRequest('PUT', '/api/gsc_afm_resources/' + gsc_resource_id + '/disable', args, False)
+
+    def enableGscResource(self, gsc_resource_id, args):
+        """ enableGscResource :
+        Enables an AFM resource by attaching a port, port group or filter to it.
+
+        Sample usage:
+        """
+        return self._sendRequest('PUT', '/api/gsc_afm_resources/' + gsc_resource_id + '/enable', args, False)
+
+    def getGscResourceBandwidth(self, gsc_resource_id):
+        """ getGscResourceBandwidth :
+        Gets the bandwidth details for the GSC AFM resource.
+
+        Sample usage:
+        """
+        return self._sendRequest('PUT', '/api/gsc_afm_resources/' + gsc_resource_id + '/get_bandwidth_details')
+
+    def getGscResource(self, gsc_resource_id):
+        """ getGscResource :
+        Fetch the properties of an GSC-FD resource object.
+        To request only select properties (partial response), append to the URL the query
+        parameter '?properties=value', where value is comma-separated list to select
+        multiple fields for example: /api/resource_type/{object-id}?properties=description,name.
+        Query Parameter is optional.
+
+        Sample usage:
+        """
+        return self._sendRequest('GET', '/api/gsc_afm_resources/' + gsc_resource_id)
+
+    def getAllGscResources(self):
+        """ getAllGscResources :
+        Fetch a list containing the summaries for all the GSC-FD resources in the system.
+
+        Sample usage:
+        """
+        return self._sendRequest('GET', '/api/gsc_afm_resources')
+
+    def resetGscFragmentationEngine(self, gsc_resource_id):
+        """ resetGscFragmentationEngine :
+        Resets the GSC fragmentation engine.
+
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/gsc_afm_resources/' + gsc_resource_id + '/reset_gsc_fragmentation_engine')
+
+    def searchGscResource(self, args):
+        """ searchGscResource :
+        Search for a specific GSC resource in the system by certain properties.
+
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/gsc_afm_resources/search', args)
+
+    def modifyGscResource(self, gsc_resource_id, args):
+        """ modifyGscResource :
+        Update the properties of an existing GSC resource.
+
+        Sample usage:
+        """
+        return self._sendRequest('PUT', '/api/gsc_afm_resources/' + gsc_resource_id, args, False)
 
     ####################################
     # GTP FD resources
