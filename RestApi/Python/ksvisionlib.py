@@ -136,6 +136,8 @@
 #    - Added method disableCtePortGroup
 #    - Added method enableCtePortGroup
 #    - Added method modifyCtePortGroup
+# February 15, 2021
+#    - Added API versioning support
 #
 # COPYRIGHT 2019-2021 Keysight Technologies.
 #
@@ -201,7 +203,7 @@ class UnknownError(KeysightNpbExceptions):
 
 class VisionWebApi(object):
 
-    def __init__(self, host, username, password, port=8000, debug=False, logFile=None, timeout=30, retries=2):
+    def __init__(self, host, username, password, port=8000, version=None, debug=False, logFile=None, timeout=30, retries=2):
         #urllib3.disable_warnings()
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
         self.host = host
@@ -212,6 +214,7 @@ class VisionWebApi(object):
         self.auth_b64 = ''
         self.password_headers = ''
         self.token_headers = ''
+        self.version = version
         self.connection = ''
         self.logFile = logFile
         self.__request_timeout = timeout
@@ -266,7 +269,10 @@ class VisionWebApi(object):
             self._log (" args={:s}\n".format(str(args)))
 
         args = json.dumps(args)
-        response = self.connection.urlopen(httpMethod, url, body=args, headers=self.token_headers)
+        request_headers = self.token_headers
+        if self.version:
+            request_headers.update({'Version': self.version})
+        response = self.connection.urlopen(httpMethod, url, body=args, headers=request_headers)
 
         if self.__debug:
             self._log ("Response:\n")
