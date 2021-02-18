@@ -245,7 +245,8 @@ class VisionWebApi(object):
             raise AuthenticationError
 
         self.token_headers = { 'Authentication' : self.token, 'Content-type' : 'application/json' }
-
+        if self.version:
+            self.token_headers.update({'Version': self.version})
     def __str__(self):
         return "VisionWebApi(host='{:s}', port={:d}, user='{:s}', password='{:s}', auth64='{:s}', password_hdrs='{:s}', token_hdrs='{:s}', connection='{:s}', debug={:s}, timeout={:d}, retries={:d})".format(self.host, self.port,  self.user, self.password, self.auth_b64, str(self.password_headers), str(self.token_headers), str(self.connection), str(self.__debug), self.__request_timeout, self.__request_retries)
 
@@ -269,10 +270,7 @@ class VisionWebApi(object):
             self._log (" args={:s}\n".format(str(args)))
 
         args = json.dumps(args)
-        request_headers = self.token_headers
-        if self.version:
-            request_headers.update({'Version': self.version})
-        response = self.connection.urlopen(httpMethod, url, body=args, headers=request_headers)
+        response = self.connection.urlopen(httpMethod, url, body=args, headers=self.token_headers)
 
         if self.__debug:
             self._log ("Response:\n")
