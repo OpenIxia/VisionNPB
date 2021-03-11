@@ -136,6 +136,8 @@
 #    - Added method disableCtePortGroup
 #    - Added method enableCtePortGroup
 #    - Added method modifyCtePortGroup
+# February 15, 2021
+#    - Added API versioning support
 #
 # COPYRIGHT 2019-2021 Keysight Technologies.
 #
@@ -201,7 +203,7 @@ class UnknownError(KeysightNpbExceptions):
 
 class VisionWebApi(object):
 
-    def __init__(self, host, username, password, port=8000, debug=False, logFile=None, timeout=30, retries=2):
+    def __init__(self, host, username, password, port=8000, version=None, debug=False, logFile=None, timeout=30, retries=2):
         #urllib3.disable_warnings()
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
         self.host = host
@@ -212,6 +214,7 @@ class VisionWebApi(object):
         self.auth_b64 = ''
         self.password_headers = ''
         self.token_headers = ''
+        self.version = version
         self.connection = ''
         self.logFile = logFile
         self.__request_timeout = timeout
@@ -242,7 +245,8 @@ class VisionWebApi(object):
             raise AuthenticationError
 
         self.token_headers = { 'Authentication' : self.token, 'Content-type' : 'application/json' }
-
+        if self.version:
+            self.token_headers.update({'Version': self.version})
     def __str__(self):
         return "VisionWebApi(host='{:s}', port={:d}, user='{:s}', password='{:s}', auth64='{:s}', password_hdrs='{:s}', token_hdrs='{:s}', connection='{:s}', debug={:s}, timeout={:d}, retries={:d})".format(self.host, self.port,  self.user, self.password, self.auth_b64, str(self.password_headers), str(self.token_headers), str(self.connection), str(self.__debug), self.__request_timeout, self.__request_retries)
 
