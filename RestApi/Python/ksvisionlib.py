@@ -136,8 +136,16 @@
 #    - Added method disableCtePortGroup
 #    - Added method enableCtePortGroup
 #    - Added method modifyCtePortGroup
+#
 # February 15, 2021
 #    - Added API versioning support
+#
+# March 11, 2021:
+#    - Added Vision NPB v5.7.1 Changes:
+#        - Added method clearPort
+#    - Added method createPort
+#    - Added method deletePort
+#    - Added method getPortTransceiverInfo
 #
 # COPYRIGHT 2019-2021 Keysight Technologies.
 #
@@ -203,7 +211,7 @@ class UnknownError(KeysightNpbExceptions):
 
 class VisionWebApi(object):
 
-    def __init__(self, host, username, password, port=8000, version=None, debug=False, logFile=None, timeout=30, retries=2):
+    def __init__(self, host, username, password, port=8000, debug=False, log_file=None, timeout=30, retries=2, version=None):
         #urllib3.disable_warnings()
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
         self.host = host
@@ -216,7 +224,7 @@ class VisionWebApi(object):
         self.token_headers = ''
         self.version = version
         self.connection = ''
-        self.logFile = logFile
+        self.log_file = log_file
         self.__request_timeout = timeout
         self.__request_retries = retries
 
@@ -247,14 +255,15 @@ class VisionWebApi(object):
         self.token_headers = { 'Authentication' : self.token, 'Content-type' : 'application/json' }
         if self.version:
             self.token_headers.update({'Version': self.version})
+
     def __str__(self):
-        return "VisionWebApi(host='{:s}', port={:d}, user='{:s}', password='{:s}', auth64='{:s}', password_hdrs='{:s}', token_hdrs='{:s}', connection='{:s}', debug={:s}, timeout={:d}, retries={:d})".format(self.host, self.port,  self.user, self.password, self.auth_b64, str(self.password_headers), str(self.token_headers), str(self.connection), str(self.__debug), self.__request_timeout, self.__request_retries)
+        return "VisionWebApi(host='{:s}', port={:d}, user='{:s}', password='{:s}', auth64='{:s}', password_hdrs='{:s}', token_hdrs='{:s}', connection='{:s}', debug={:s}, log_file={:s}, timeout={:d}, retries={:d}, version={:s})".format(self.host, self.port,  self.user, self.password, self.auth_b64, str(self.password_headers), str(self.token_headers), str(self.connection), str(self.__debug), str(self.log_file), self.__request_timeout, self.__request_retries, str(self.version))
 
     def __repr__(self):
         return str(self)
 
     def _log(self, message):
-        handle = open(self.logFile, 'a') if self.logFile else sys.stdout
+        handle = open(self.log_file, 'a') if self.log_file else sys.stdout
         handle.write(message)
         if handle is not sys.stdout:
             handle.close()
@@ -329,7 +338,6 @@ class VisionWebApi(object):
     def authenticate(self):
         """ authenticate :
         Athenticate with the NTO using username and password.
-
         Sample usage:
         >>> nto.authenticate()
         """
@@ -450,7 +458,6 @@ class VisionWebApi(object):
     def changeRole(self):
         """ changeRole :
         This command changes role between supervisor and independent.
-
         Sample usage:
         >>> nto.changeRole()
         """
@@ -463,11 +470,9 @@ class VisionWebApi(object):
         groups to out of band (i.e., non-inline) dynamic filters. To update
         the priority of inline filters, update the inline_service_chain_priority_list
         of the corresponding inline Bypass connector.
-
         This should only be used when the filter build mode is PRIORITY
         (see system memory_allocation property, filter_build_settings).
         This method is allowed only on the following models: Vision One, E40, E100
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/change_filter_priority', args)
@@ -475,7 +480,6 @@ class VisionWebApi(object):
     def changePortSpeed(self, args):
         """ changePortSpeed :
         Changes the speed configuration of port.
-
         Sample usage:
         >>> nto.changePortSpeed({'port_list': [64], 'qsfp28_port_mode': 'MODE_QSFP'})
         '{}'
@@ -485,7 +489,6 @@ class VisionWebApi(object):
     def changeOfflinePortSpeed(self, args):
         """ changeOfflinePortSpeed :
         This action will change the speed configuration of an offline port.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/change_offline_speed_configuration', args, False)
@@ -493,7 +496,6 @@ class VisionWebApi(object):
     def clearAeChannelStatsHistory(self, args):
         """ clearAeChannelStatsHistory :
         Clears the Burst and/or Latency & Jitter Stats History Files from the Disk per AE.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/clear_ae_channel_statistics_history', args)
@@ -501,7 +503,6 @@ class VisionWebApi(object):
     def clearAggregationSwitch(self):
         """ clearAggregationSwitch :
         Clears the configuration of an aggregation switch.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/clear_aggregation_switch', None)
@@ -510,7 +511,6 @@ class VisionWebApi(object):
         """ changeQsfp28PortMode :
         Changes the QSFP mode of a QSFP28 port.
         * This method was deprecated in v4.8.0, and replaced with change_speed_configuration.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/change_qsfp28_port_mode', args, False)
@@ -518,7 +518,6 @@ class VisionWebApi(object):
     def changeSpeedConfiguration(self, args):
         """ changeSpeedConfiguration :
         Changes the speed configuration of port..
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/change_speed_configuration', args, False)
@@ -527,7 +526,6 @@ class VisionWebApi(object):
         """ changePortAggregationMode :
         * This method was deleted in v4.7.5.
         Agregates four 10G ports into one 40G port and backward.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/change_port_aggregation_mode', args, False)
@@ -537,7 +535,6 @@ class VisionWebApi(object):
         Clear the configuration by deleting all filters, regular users, groups,
         filter templates, filter template collections, port groups, and custom
         icons and by setting all ports to default values.
-
         Sample usage:
         >>> nto.clearConfig()
         {u'message': u'Configuration cleared.'}
@@ -549,7 +546,6 @@ class VisionWebApi(object):
         """ clearFiltersAndPorts :
         This command deletes all filters and port groups and sets all ports to
         default values.
-
         Sample usage:
         >>> nto.clearFiltersAndPorts()
         {u'message': u'Filters and ports cleared.'}
@@ -562,7 +558,6 @@ class VisionWebApi(object):
         This command clears the system and restores it to a default state, including
         resetting the admin account to default values. The license currently
         installed will not be removed.
-
         Sample usage:
         >>> nto.clearSystem()
         {u'message': u'System restored to default state.'}
@@ -573,7 +568,6 @@ class VisionWebApi(object):
     def deployNetServiceInstance(self, args):
         """ deployNetServiceInstance :
         This command will deploy a netservice instance based on a default name.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/deploy_net_service_instance', args, False)
@@ -581,7 +575,6 @@ class VisionWebApi(object):
     def drainNetServiceInstance(self, args):
         """ drainNetServiceInstance :
         This command will drain a netservice instance based on a default name.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/drain_net_service_instance', args, False)
@@ -589,7 +582,6 @@ class VisionWebApi(object):
     def enableFipsServerEncryption(self):
         """ enableFipsServerEncryption :
         This commands causes FIPS encryption to be enabled on the server.
-
         Sample usage:
         *** TO BE TESTED ***
         >>> nto.enableFipsServerEncryption()
@@ -600,7 +592,6 @@ class VisionWebApi(object):
     def exportConfig(self, args):
         """ exportConfig :
         Return configuration settings from an NTO to a file.
-
         Sample usage:
         nto.exportConfig({'boundary' : 'INCLUDE', 'description' : 'SNMP Config', 'export_type' : 'CUSTOM', 'file_name' : '/Users/fmota/Desktop/snmp+user.ata', 'user': None, 'system' : 'snmp_config'})
         """
@@ -616,7 +607,6 @@ class VisionWebApi(object):
     def exportOfflineLicenseActivationRequest(self, args):
         """ exportOfflineLicenseActivationRequest :
         Export the request file for FNOOD offline license activation for the current system.
-
         Sample usage:
         *** TO BE TESTED ***
         """
@@ -634,7 +624,6 @@ class VisionWebApi(object):
         Export the KeyGen license details to a json file that can be used
         on the migration portal to obtain a new style license for an NTO
         or an union.
-
         Sample usage:
         >>> nto.exportKeyGenLicense({'file_name': 'mylicense'})
         """
@@ -651,7 +640,6 @@ class VisionWebApi(object):
     def fipsServerEncryptionStatus(self):
         """ fipsServerEncryptionStatus :
         This commands causes FIPS encryption to be enabled on the server.
-
         Sample usage:
         *** TO BE TESTED ***
         >>> nto.fipsServerEncryptionStatus()
@@ -664,7 +652,6 @@ class VisionWebApi(object):
         This command clears the system and restores it to a factory default
         state, including resetting the admin account to default values. The
         license currently installed will also be removed.
-
         Sample usage:
         >>> nto.factoryReset()
         """
@@ -675,7 +662,6 @@ class VisionWebApi(object):
         """ forcePowerPortModule :
         This command will power on/off the port module in the given module location.
         This method is allowed only on the following models: 8000.
-
         Sample usage:
         """
         args = {}
@@ -685,7 +671,6 @@ class VisionWebApi(object):
         """ generateCsr :
         Allows Syslog and TLS/HTTPS certificates to be uploaded and deleted. Basic
         information can also be viewed for certificates installed on the system.
-
         Sample usage:
         >>> nto.generateCsr({'csr_use' : 'SYSLOG', 'tls_cert_request_info' : {'city' : 'Austin', 'common_name' : 'Test API', 'country' : 'US', 'organization' : 'Ixia', 'organization_unit' : 'NVS', 'state' : 'TX', 'subject_alt_name' : 'Anue'}})
         {u'csr': u'-----BEGIN CERTIFICATE REQUEST-----MIIC5zCCAc8CAQAwWzELMAkGA1UECBMCVFgxDzANBgNVBAcTBkF1c3RpbjELMAkGA1UEBhMCVVMxDDAKBgNVBAsTA05WUzENMAsGA1UEChMESXhpYTERMA8GA1UEAxMIVGVzdCBBUEkwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQC4RNOnSPTRamGkAwj/otEgzAFYIEXlpsO4OS16P49l3c0n5ShDs0uo2pd4a0Qe4Wvh/KX4L1oZbxS/2YNJgNlLiRkHo5K62ZYYskfNGXPBYfkkRDLk76SrhgHyoGSEy8h6OdeE2QpfgsD/XLQVoFQ3dVemSwo76bE3Vap333fJmvtNJNgItkKqKBW3zF1doSWJwEHDwwhG9/KSfFBHf/qE51LRj2iybZQE4ijZGHv0I7CtSF20166sH75EhsoK8/vs1RT6LpyuEM9JKoRzmvE1ufk3nHtlvF3UniUluUCubXfldaEROIeBvYfoWZGGuyzAN01ZbxZ+/K2ENokpVKPbAgMBAAGgRzBFBgkqhkiG9w0BCQ4xODA2MA8GA1UdEQQIMAaCBEFudWUwDgYDVR0PAQH/BAQDAgUgMBMGA1UdJQQMMAoGCCsGAQUFBwMCMA0GCSqGSIb3DQEBCwUAA4IBAQAfVnwTv1t56YWU2W5+Fjlc9nuTL7eAoKqkioTJ1CuAINLybbHYUVXVfpBahfjj7g6ZmiWZ383SK7ImuPfHE7kt/eRDna+/+HUQ22799HQmyLcxCkYZVSH8gWkTNbUIhgh4AFMwt83zWu324P+qNkh5u0sckPTfNzry3Mxz2QzmM5sP+oU8/RCt04iYzz5KSu+tzHWJ9FOGLQqQ73Ausz0smTDFBlVLs8VCifHVc2QmSbIofHVPUOUEjWo+FFb6WK6/7NjgE4DM9rVDV7eW9WXZgos6WnXRVMIpedeibh31iM/sc63F0tQHXt696kfO19LBc6FLMKLCvVtkGfSnq5u9-----END CERTIFICATE REQUEST-----'}
@@ -695,7 +680,6 @@ class VisionWebApi(object):
     def getAllEodReportsInfo(self, args):
         """ getAllEodReportsInfo :
         Returns the list of all Eod events summary Report for all AEs in a TradeVision.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/get_ae_events_report_info', args)
@@ -704,7 +688,6 @@ class VisionWebApi(object):
         """ getAvailableFilterCriteria :
         Return a list of filter criteria which can be used given an already
         present set of filter criteria.
-
         Sample usage:
         >>> nto.getAvailableFilterCriteria({'filter_object_type': 'FILTER'})
         []
@@ -714,7 +697,6 @@ class VisionWebApi(object):
     def getChannelBurstStats(self, args):
         """ getChannelBurstStats :
         This command is used to get the Channel Burst statisics for a given channel id and VLAN Match type per Analysis Engine.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/get_channel_burst_stats', args)
@@ -722,7 +704,6 @@ class VisionWebApi(object):
     def getChannelLatencyStats(self, args):
         """ getChannelLatencyStats :
         This command is used to get the latency/jitter statisics for a given channel id and VLAN Match type per Analysis Engine.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/get_channel_latency_stats', args)
@@ -730,7 +711,6 @@ class VisionWebApi(object):
     def getDtspChannelInfo(self, args):
         """ getDtspChannelInfo :
         This command is used to get the channel info based on a given list of channel IP:Port.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/get_dtsp_channel_info', args)
@@ -740,7 +720,6 @@ class VisionWebApi(object):
         Return a End-Of-Day report by name or a comparison report between two different End-Of-Day reports.
         If report name is specified, event summary report is returned.
         If two report names are specified, a new report is generated holding the differences between the two EOD reports.
-
         Sample usage:
         """
         args = {}
@@ -754,7 +733,6 @@ class VisionWebApi(object):
         (representing the end date of two different EOD reports), a new report is generated holding the
         differences between the two EOD reports. Note that the end dates must be from any of the latest 8
         EOD reports run.
-
         Sample usage:
         """
         args = {}
@@ -763,7 +741,6 @@ class VisionWebApi(object):
     def getAeEventsSummaryReport(self):
         """ getAeEventsSummaryReport :
         Return events summary report for all the AEs in a TradeVision.
-
         Sample usage:
         """
         args = {}
@@ -772,7 +749,6 @@ class VisionWebApi(object):
     def getLoginInfo(self):
         """ getLoginInfo :
         Returns last login session details plus hardware info and sensor readings for the device
-
         Sample usage:
         >>> nto.getLoginInfo()
         {
@@ -809,7 +785,6 @@ class VisionWebApi(object):
         """ getFabricPorts :
         Return fabric ports information for one or more members. This
         information can be used as input to the update_fabric_ports action.
-
         Sample usage:
         >>> nto.getFabricPorts()
         """
@@ -818,7 +793,6 @@ class VisionWebApi(object):
     def getHaCliConfig(self):
         """ getHaCliConfig :
         Returns the HA config needed by CLI.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/get_ha_config_for_cli')
@@ -826,7 +800,6 @@ class VisionWebApi(object):
     def getMemoryMeters(self):
         """ getMemoryMeters :
         Return the filter memory meters showing memory allocation and percentage used.
-
         Sample usage:
         >>> nto.getMemoryMeters()
         [{u'unit_name': u'LC1', u'memory_meters': [{u'custom_memory_slice_count': 0, u'meters': [{u'alloc_pcnt': 89, u'avail_pcnt': 100, u'meter_name': u'FILTER_ETHERTYPE_VLAN_L3_L4'}, {u'alloc_pcnt': 89, u'avail_pcnt': 100, u'meter_name': u'FILTER_L2_L3_L4'}], u'memory_type': u'DYNAMIC_FILTER_NON_IP'}, {u'custom_memory_slice_count': 0, u'meters': [{u'alloc_pcnt': 50, u'avail_pcnt': 100, u'meter_name': u'DYNAMIC_SIP_IPV4'}, {u'alloc_pcnt': 50, u'avail_pcnt': 100, u'meter_name': u'DYNAMIC_DIP'}], u'memory_type': u'DYNAMIC_FILTER_IP'}, {u'custom_memory_slice_count': 0, u'meters': [{u'alloc_pcnt': 100, u'avail_pcnt': 100, u'meter_name': u'NETWORK_PORT_L2_L3_IPV4'}], u'memory_type': u'NETWORK_PORT_FILTER'}, {u'custom_memory_slice_count': 0, u'meters': [{u'alloc_pcnt': 100, u'avail_pcnt': 100, u'meter_name': u'TOOL_PORT_L2_L3_IPV4'}], u'memory_type': u'TOOL_PORT_FILTER'}]}, ...
@@ -837,7 +810,6 @@ class VisionWebApi(object):
     def getMemoryMetersPreview(self, args):
         """ getMemoryMetersPreview :
         Accepts a memory allocation configuration and return what the filter memory meters would be for that allocation.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/get_memory_meters_preview', args)
@@ -845,10 +817,10 @@ class VisionWebApi(object):
     def getTransceiverInfo(self):
         """ getTransceiverInfo :
         Return the transceiver information.
-
         Sample usage:
         >>> nto.getTransceiverInfo()
-        [{u'line_card_number': 1, u'line_card_tranceiver_info': u"<h1>Demo sample</h1><br/><br/><br/><table border='2'><tr><td bgcolor='#6495ED'><font size='+1' color='black'><b>Port: P1-01 (demo)</b></font><br/><br/><table border='1'><tr><th bgcolor='silver'>Hardware Info</th><th bgcolor='silver'>Vendor Name</th><th bgcolor='silver'>OUI</th><th bgcolor='silver'>Part Number</th><th bgcolor='silver'>Revision</th><th bgcolor='silver'>Serial Number</th><th bgcolor='silver'>Date Code</th><th bgcolor='silver'>Lot Code</th></tr><tr><th bgcolor='white'>SFP</th><th bgcolor='white'>ANUE SYSTEMS</th><th bgcolor='white'>009065</th><th bgcolor='white'>200-06-0003</th><th bgcolor=
+        [{'lanes': 1, 'port_default_name': 'P01', 'port_id': '16', 'port_name': 'P01', 'transceiver_info': [{'cable': 'N/A', 'compliance': '100G AOC or 25GAUI C2M AOC', 'connector': 'No separable connector', 'diag_calibration': 'Not Applicable', 'identifier': 'QSFP28', 'length_comment': 'OM4 50um', 'length_mode': 'Unspecified', 'max_length': '6 meters', 'present': 'true', 'rx_input_power1': '1.3392', 'rx_input_power1_dbm': '1.27', 'rx_input_power2': '1.3545', 'rx_input_power2_dbm': '1.32', 'rx_input_power3': '1.3764', 'rx_input_power3_dbm': '1.39', 'rx_input_power4': '1.352', 'rx_input_power4_dbm': '1.31', 'rx_input_power_high_alert_threshold': '3.4673', 'rx_input_power_high_alert_threshold_dbm': '5.40', 'rx_input_power_high_warning_threshold': '1.7378', 'rx_input_power_high_warning_threshold_dbm': '2.40', 'rx_input_power_low_alert_threshold': '0.0467', 'rx_input_power_low_alert_threshold_dbm': '-13.31', 'rx_input_power_low_warning_threshold': '0.0933', 'rx_input_power_low_warning_threshold_dbm': '-10.30', 'rx_input_power_status1': 'Normal', 'rx_input_power_status2': 'Normal', 'rx_input_power_status3': 'Normal', 'rx_input_power_status4': 'Normal', 'temperature': '35', 'temperature_high_alert_threshold': '80', 'temperature_high_warning_threshold': '70', 'temperature_low_alert_threshold': '-10', 'temperature_low_warning_threshold': '0', 'temperature_status': 'Normal', 'tx_bias1': '6.75', 'tx_bias2': '6.75', 'tx_bias3': '6.75', 'tx_bias4': '6.75', 'tx_bias_high_alert_threshold': '8.5', 'tx_bias_high_warning_threshold': '8.0', 'tx_bias_low_alert_threshold': '5.492', 'tx_bias_low_warning_threshold': '6.0', 'tx_bias_status1': 'Normal', 'tx_bias_status2': 'Normal', 'tx_bias_status3': 'Normal', 'tx_bias_status4': 'Normal', 'tx_output_power1': '1.6412', 'tx_output_power1_dbm': '2.15', 'tx_output_power2': '1.6222', 'tx_output_power2_dbm': '2.10', 'tx_output_power3': '1.5521', 'tx_output_power3_dbm': '1.91', 'tx_output_power4': '1.5447', 'tx_output_power4_dbm': '1.89', 'tx_output_power_high_alert_threshold': '3.4673', 'tx_output_power_high_alert_threshold_dbm': '5.40', 'tx_output_power_high_warning_threshold': '1.7378', 'tx_output_power_high_warning_threshold_dbm': '2.40', 'tx_output_power_low_alert_threshold': '0.0724', 'tx_output_power_low_alert_threshold_dbm': '-11.40', 'tx_output_power_low_warning_threshold': '0.1445', 'tx_output_power_low_warning_threshold_dbm': '-8.40', 'tx_output_power_status1': 'Normal', 'tx_output_power_status2': 'Normal', 'tx_output_power_status3': 'Normal', 'tx_output_power_status4': 'Normal', 'vendor_date_code': '05-07-2018', 'vendor_lot_code': '  ', 'vendor_name': 'Mellanox', 'vendor_oui': '0002c9', 'vendor_part_number': 'MFA1A00-C003', 'vendor_rev': 'B1', 'vendor_serial_number': 'MT1823FT00529', 'voltage': '3.2691', 'voltage_high_alert_threshold': '3.5', 'voltage_high_warning_threshold': '3.465', 'voltage_low_alert_threshold': '3.1', 'voltage_low_warning_threshold': '3.135', 'voltage_status': 'Normal', 'wavelength': '8500'}]},
+            <snip>
         """
         args = {}
         return self._sendRequest('POST', '/api/actions/get_transceiver_info', args)
@@ -858,7 +830,6 @@ class VisionWebApi(object):
         Get neighbors of a list of ports given as parameter. If the list given is empty or is not given at all, it will return
         all neighbors for all ports that are valid for LLDP and have valid neighbors registrations.
         This method is allowed only on the following models: E40, TradeVision
-
         Sample usage:
         >>> nto.getNeighbors({'port_id_list': [8]})
         {u'P49': [{u'system_name': u'Ixia Vision One (Neo10 project)', u'port_description': u'', u'system_description': u'', u'expired': False, u'age': 1, u'chassis_id': u'00:1b:6e:04:8d:44', u'custom_tlvs': [], u'ttl': 120, u'port_id': u'P50', u'system_capabilities': u'', u'management_addresses': [], u'last_seen': 1577241420}]}
@@ -868,7 +839,6 @@ class VisionWebApi(object):
     def getLfdLocalPorts(self):
         """ getLfdLocalPorts :
         Get a list of local ports valid for LFD.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/get_local_ports_valid_for_lfd', {})
@@ -876,7 +846,6 @@ class VisionWebApi(object):
     def getLfdPeerPorts(self):
         """ getLfdPeerPorts :
         Get a list of peer ports valid for LFD.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/get_peer_ports_valid_for_lfd', {})
@@ -885,7 +854,6 @@ class VisionWebApi(object):
         """ getEarlyClassificationCriteria :
         Get a list of valid early classification criteria for Intersection filtering.
         This method is allowed only on the following models: 7816, 8000, E100.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/get_early_classification_criteria', {})
@@ -893,7 +861,6 @@ class VisionWebApi(object):
     def getAllNeighbors(self, port_id_list=[]):
         """ getAllNeighbors :
         Fetch a list containing summaries for all the neigbors the system learned by snooping on LLDP messages.
-
         Sample usage:
         >>> nto.getAllNeighbors()
         {u'P50': [{u'system_name': u'Ixia Vision One (Neo10 project)', u'port_description': u'', u'system_description': u'', u'expired': False, u'age': 1, u'chassis_id': u'00:1b:6e:04:8d:44', u'custom_tlvs': [], u'ttl': 120, u'port_id': u'P49', u'system_capabilities': u'', u'management_addresses': [], u'last_seen': 1577241872}], u'P49': [{u'system_name': u'Ixia Vision One (Neo10 project)', u'port_description': u'', u'system_description': u'', u'expired': False, u'age': 3, u'chassis_id': u'00:1b:6e:04:8d:44', u'custom_tlvs': [], u'ttl': 120, u'port_id': u'P50', u'system_capabilities': u'', u'management_addresses': [], u'last_seen': 1577241870}]}
@@ -905,7 +872,6 @@ class VisionWebApi(object):
     def getObjectType(self, args):
         """ getObjectType :
         Return the object type for an internal id.
-
         Sample usage:
         >>> nto.getObjectType({'id':238})
         {u'object_type': u'PORT'}
@@ -915,7 +881,6 @@ class VisionWebApi(object):
     def getProperties(self, args):
         """ getProperties :
         Return a list of the properties that are available for a particular type of object.
-
         Sample usage:
         >>> nto.getProperties({'object_type' : 'monitor'})
         {u'properties': [u'actions', u'created', u'description', u'history', u'id', u'mod_count', u'name', u'trigger']}
@@ -925,7 +890,6 @@ class VisionWebApi(object):
     def getPropertyValues(self, args):
         """ getPropertyValues :
         Return a list of the properties that are available for a particular type of object.
-
         Sample usage:
         >>> nto.getPropertyValues({'object_type': 'port', 'prop_name': 'force_link_up'})
         {u'value': [u'DISABLED', u'ENABLED', u'MIXED', u'NOT_SUPPORTED']}
@@ -935,7 +899,6 @@ class VisionWebApi(object):
     def importConfig(self, args):
         """ importConfig :
         Copy configuration settings from a file to an NTO.
-
         Sample usage:
         >>> nto.importConfig({'boundary': 'INCLUDE', 'import_type': 'CUSTOM', 'file_name': '/Users/fmota/Desktop/snmp+user.ata', 'system' : 'snmp_config'})
         '{"message": "Configuration imported from /Users/fmota/Desktop/snmp+user.ata."}'
@@ -980,7 +943,6 @@ class VisionWebApi(object):
     def installMakoOs(self, args):
         """ installMakoOs :
         This command installs a Mako OS software upgrade file on Marshall cards.
-
         Sample usage:
         """
 
@@ -1015,7 +977,6 @@ class VisionWebApi(object):
     def installLicense(self, args):
         """ installLicense :
         This command installs a license file on a NTO, a union, or a member.
-
         Sample usage:
         >>> nto.installLicense({'file_name': '/Users/fmota/Desktop/IxiaLicenseA_17_Fred_20150826_1.txt'})
         '{"message": "License installed from /Users/fmota/Desktop/IxiaLicenseA_17_Fred_20150826_1.txt."}'
@@ -1063,7 +1024,6 @@ class VisionWebApi(object):
         """ installNetservice :
         This command installs a netservice upgrade file on an NTO.
         This method is allowed only on the following models: 8000
-
         Sample usage:
         """
 
@@ -1108,7 +1068,6 @@ class VisionWebApi(object):
     def installLicense_old(self, args):
         """ installLicense :
         This command installs a license file on a NTO, a union, or a member.
-
         Sample usage:
         >>> nto.installLicense({'file_name': '/Users/fmota/Desktop/IxiaLicenseA_17_Fred_20150826_1.txt'})
         '{"message": "License installed from /Users/fmota/Desktop/IxiaLicenseA_17_Fred_20150826_1.txt."}'
@@ -1157,7 +1116,6 @@ class VisionWebApi(object):
         This command installs a software upgrade file on an NTO. When installing
         software on a supervisor in a union, all members in the union will be
         upgraded to the same software level automatically.
-
         Sample usage:
         >>> nto.installSoftware({'file_name': '/Users/fmota/Desktop/NVOS-4.3.1.1-52xx-141844-20150722-174244.zip'})
         '{"message": "Software installation complete. The system will be restarted. Visit the 5288 launch page in your browser to obtain the updated client software."}'
@@ -1193,11 +1151,9 @@ class VisionWebApi(object):
     def mtuQuery(self, args={}):
         """ mtuQuery :
         This commands returns the port, linecard and AFM MTUs based on the board type.
-
         Sample usage:
         >>> nto.mtuQuery({'port_id': 59})
         {u'port_mtu': 12284, u'port_id': 59, u'fabric_mtu': 12268, u'afmr_mtu': 0}
-
         >>> nto.mtuQuery({'filter_id': 96})
         {u'port_mtu': 0, u'fabric_mtu': 0, u'afmr_mtu': 0, u'filter_id': 96}
         """
@@ -1206,7 +1162,6 @@ class VisionWebApi(object):
     def markEodReportAsGolden(self, args={}):
         """ markEodReportAsGolden :
         Marks a completed End-Of-Day Report as a Golden Report.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/mark_ae_eod_report_golden', args)
@@ -1214,18 +1169,15 @@ class VisionWebApi(object):
     def powerDown(self, args={}):
         """ powerDown :
         This command safely shuts down an NTO, a union or a member.
-
         Sample usage:
         >>> nto.powerDown()
         {u'message': u'System shutdown requested.'}
-
         """
         return self._sendRequest('POST', '/api/actions/power_down', args)
 
     def pullConfigFromHaPeer(self):
         """ pullConfigFromHaPeer :
         Pulls the configuration from the HA peer machine.
-
         Sample usage:
         *** TO BE TESTED ***
         >>> nto.pullConfigFromHaPeer()
@@ -1236,7 +1188,6 @@ class VisionWebApi(object):
     def pushConfigToHaPeer(self):
         """ pushConfigToHaPeer :
         Pushes the local configuration to the HA peer machine.
-
         Sample usage:
         *** TO BE TESTED ***
         >>> nto.pushConfigToHaPeer()
@@ -1247,7 +1198,6 @@ class VisionWebApi(object):
     def removeLicense(self):
         """ removeLicense :
         This command will remove the license and power down the NTO.
-
         Sample usage:
         >>> nto.removeLicense()
         """
@@ -1257,7 +1207,6 @@ class VisionWebApi(object):
     def removePlugin(self, args):
         """ removePlugin :
         This command will remove (uninstall) a plugin based on the given plugin type.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/remove_plugin', args, False)
@@ -1266,17 +1215,14 @@ class VisionWebApi(object):
         """ removeNetservice :
         This command will remove (uninstall) a netservice based on the given service id.
         This method is allowed only on the following models: 8000.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/remove_netservice', args, False)
 
     def removePortModuleConfiguration(self, args):
         """ removePortModuleConfiguration :
-
         This command will remove the port module configuration based on the given module location.
         This method is allowed only on the following models: 8000.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/remove_port_module_config', args, False)
@@ -1284,7 +1230,6 @@ class VisionWebApi(object):
     def removeLineCard(self, args):
         """ removeLineCard :
         This command will remove the line card based on the given line card id.
-
         Sample usage:
         >>> nto.removeLineCard({'line_card_id': 1})
         {u'message': u'System restart requested.'}
@@ -1294,7 +1239,6 @@ class VisionWebApi(object):
     def resetFactoryDefaultsVAM(self, args={}):
         """ resetFactoryDefaultsVAM :
         This command resets to factory defaults the expansion board.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/reset_factory_defaults_vam', args)
@@ -1302,7 +1246,6 @@ class VisionWebApi(object):
     def restart(self, args={}):
         """ restart :
         This command safely restarts an NTO, a union, or a member.
-
         Sample usage:
         >>> nto.restart()
         {u'message': u'System restart requested.'}
@@ -1312,7 +1255,6 @@ class VisionWebApi(object):
     def restoreFirewall(self):
         """ restoreFirewall :
         This command will restore the default firewall rules to allow all servers to access NTO.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/restore_firewall', None)
@@ -1320,7 +1262,6 @@ class VisionWebApi(object):
     def revertSoftware(self):
         """ revertSoftware :
         This command revert software to it's previous version.
-
         Sample usage:
         >>> nto.revertSoftware()
         {u'message': u'Software revert requested. The system will be restarted. Visit the 7300 launch page in your browser to obtain the reverted client software.'}
@@ -1330,7 +1271,6 @@ class VisionWebApi(object):
     def saveLogs(self, args):
         """ saveLogs :
         Save the current system log files for subsequent delivery to Anue Support.
-
         Sample usage:
         >>> nto.saveLogs({'file_name': '/Users/fmota/Desktop/NTO-log.zip'})
         """
@@ -1347,7 +1287,6 @@ class VisionWebApi(object):
     def setHaSyncPort(self):
         """ setHaSyncPort :
         Set the HA sync port.
-
         Sample usage:
         *** TO BE TESTED ***
         >>> nto.setHaSyncPort()
@@ -1360,7 +1299,6 @@ class VisionWebApi(object):
         Send synthetic packet to the destination addresses configured under TradeStream->Synthetic
         Mesh Latency Settings. If no destination addresses are specified, then user will not be
         allowed to send synthetic packets.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/send_synthetic_packets', args)
@@ -1368,7 +1306,6 @@ class VisionWebApi(object):
     def setIpConfig(self, args):
         """ setIpConfig :
         Changes the IP configuration of a system.
-
         Sample usage:
         >>> nto.setIPConfig({'ipv4_address': '192.168.2.149', 'ipv4_enabled': True, 'ipv4_gateway': '192.168.2.2', 'ipv4_netmask': '255.255.255.0', 'ipv6_address': 'fe80::5daa:83ed:42f8:6c08%11', 'ipv6_enabled': False, 'ipv6_prefix_length': 64})
         {u'message': u'The new IP configuration has been submitted.'}
@@ -1379,7 +1316,6 @@ class VisionWebApi(object):
         """ setStackMode :
         Set the Stack mode of a switch.
         This action will set the Stack mode for a switch. Warning: The switch will be restarted.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/set_stack_mode', args, False)
@@ -1387,7 +1323,6 @@ class VisionWebApi(object):
     def swapPortLicenses(self, args):
         """ swapPortLicenses :
         Swaps port licenses.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/swap_port_licenses', args, False)
@@ -1396,7 +1331,6 @@ class VisionWebApi(object):
         """ updateSingleIpAddress :
         This action allows a single IP address to be added to or removed from a filter
         with an existing IP address criterion.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/update_single_ip_addr', args, False)
@@ -1404,7 +1338,6 @@ class VisionWebApi(object):
     def validateAuthCalls(self):
         """ validateAuthCalls :
         This command checks auth for rest calls.
-
         Sample usage:
         """
         args = {}
@@ -1413,7 +1346,6 @@ class VisionWebApi(object):
     def modifyFabricPorts(self, args):
         """ modifyFabricPorts :
         Changes the fabric ports configuration for the specified member switch.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/update_fabric_ports', args)
@@ -1421,7 +1353,6 @@ class VisionWebApi(object):
     def resumeItrTraffic(self, args):
         """ resumeItrTraffic :
         This command will resume traffic on ITR based on ITR id.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/resume_itr_traffic', args, False)
@@ -1429,7 +1360,6 @@ class VisionWebApi(object):
     def backupGscConfig(self):
         """ backupGscConfig :
         Backup GSC configuration.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/backup_gsc_config', {})
@@ -1437,7 +1367,6 @@ class VisionWebApi(object):
     def restoreGscConfig(self):
         """ backupGscConfig :
         Restore GSC configuration.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/restore_gsc_config', {})
@@ -1448,7 +1377,6 @@ class VisionWebApi(object):
     def getAllCaptures(self):
         """ getAllCaptures :
         Fetch a list containing the summaries for all the captures in the system.
-
         Sample usage:
         >>> nto.getAllCaptures()
         [{u'id': 546, u'name': u'L4-CAP'}]
@@ -1458,7 +1386,6 @@ class VisionWebApi(object):
     def getCapture(self, resource):
         """ getCapture :
         Fetch the properties of a capture object.
-
         Sample usage:
         >>> nto.getCapture('177')
         {u'trailer_stripping_mode': u'USE_LOCAL_TIME', u'capture_count_unit': u'PACKETS', u'id': 177, u'has_dropped_packets': False, u'max_buffer_capacity': 14680063, u'modify_access_settings': {u'policy': u'ALLOW_ALL', u'groups': []}, u'connect_disconnect_access_settings': {u'policy': u'ALLOW_ALL', u'groups': []}, u'status': u'IDLE_WITH_DATA', u'fill_to_trigger_position': False, u'description': None, u'trigger_position': 25, u'resource_status': u'READY', u'license_status': u'NOT_PRESENT', u'trailer_stripping_enabled': False, u'buffer_size': 200, u'trigger_criteria': {u'logical_operation': u'AND'}, u'name': u'L1-CAP', u'buffer_type': u'LINEAR', u'capture_source': 307, u'lineboard_id': 175, u'default_name': u'L1-CAP', u'trigger_mode': u'MANUAL', u'mod_count': 3, u'history': [{u'type': u'MODIFY', u'time': 1442009546427, u'caused_by': u'admin', u'details': None, u'props': [u'CAPTURE_SOURCE', u'BUFFER_SIZE']}]}
@@ -1468,7 +1395,6 @@ class VisionWebApi(object):
     def deleteCaptureFile(self, resource, args):
         """ deleteCaptureFile :
         Deletes a capture file from a capture resource.
-
         Sample usage:
         >>> nto.deleteFileCapture('546', {'file_name': 'File 1.pcap'})
         ''
@@ -1478,7 +1404,6 @@ class VisionWebApi(object):
     def disableCapture(self, resource):
         """ disableCapture :
         Disables a capture resource by disconnecting the attached filter.
-
         Sample usage:
         >>> nto.disableCapture('L1-CAP')
         ''
@@ -1489,7 +1414,6 @@ class VisionWebApi(object):
     def downloadCaptureFile(self, resource, args, local_file_name=None):
         """ downloadCaptureFile :
         Downloads a capture file of capture resource.
-
         Sample usage:
         >>> nto.downloadFileCapture('L1-CAP', {'file_name': 'Suspicious Netflow export.pcap'})
         """
@@ -1508,7 +1432,6 @@ class VisionWebApi(object):
     def enableCapture(self, resource, args):
         """ enableCapture :
         Enables a capture by attaching a filter to it.
-
         Sample usage:
         >>> nto.enableCapture('546', {'filter_id': '524'})
         ''
@@ -1518,7 +1441,6 @@ class VisionWebApi(object):
     def ftpTransferCapture(self, resource, args):
         """ ftpTransferCapture :
         Transfers via FTP a capture file or the buffer of a capture resource.
-
         Sample usage:
         >>> nto.ftpTransferCapture('317', {'address': '10.218.6.43', 'file_name': '150604_085131.pcap', 'password': '****', 'range_type': 'ALL_PACKETS', 'remote_file_name': 'fred-api.pcap', 'user': 'fredmota', 'port': 21})
         '{\n        "id": 2,\n        "progress": 0,\n        "state": "PENDING"\n}'
@@ -1528,7 +1450,6 @@ class VisionWebApi(object):
     def getTriggerPacketCapture(self, resource):
         """ getTriggerPacketCapture :
         Gets the number of the packet that triggered the capture.
-
         Sample usage:
         >>> nto1.getTriggerPacketCapture('546')
         {u'triggerPacketNumber': 1025}
@@ -1538,7 +1459,6 @@ class VisionWebApi(object):
     def listCaptureFiles(self, resource):
         """ listCaptureFiles :
         Fetch a list containing the summaries for all the captures in the system.
-
         Sample usage:
         >>> nto.listFilesCapture('546')
         [{u'access_settings': {u'policy': u'REQUIRE_MEMBER', u'groups': [u'group1', u'group2']}, u'description': u'Capture file description', u'capture_date': 1440119146145, u'name': u'File 2.pcap', u'packet_count': 32, u'duration': 12, u'size': 262144, u'access_policy_id': u'7300-demodemo'}]
@@ -1549,7 +1469,6 @@ class VisionWebApi(object):
     def resetCaptureBuffer(self, resource):
         """ resetCaptureBuffer :
         Resets / clears the capture resource buffer.
-
         Sample usage:
         """
         args = {}
@@ -1558,7 +1477,6 @@ class VisionWebApi(object):
     def scpTransferCapture(self, resource, args):
         """ scpTransferCapture :
         Transfers via SCP a capture file or the buffer of a capture resource.
-
         Sample usage:
         >>> nto.scpTransferCapture('317', {'address': '10.218.30.1', 'file_name': '150604_085131.pcap', 'password': 'Anue', 'port': 22, 'range_type': 'ALL_PACKETS', 'remote_file_name': 'fred-api.pcap', 'user': 'support'})
         '{\n        "id": 3,\n        "progress": 0,\n        "state": "PENDING"\n}'
@@ -1568,7 +1486,6 @@ class VisionWebApi(object):
     def saveBufferCapture(self, resource, args):
         """ saveBufferCapture :
         Saves the buffer of a capture resource to a new capture file.
-
         Sample usage:
         >>> nto.saveBufferCapture('L1-CAP', {'file_name': 'wep_api_test.pcap', 'description': 'Web API Saved File', 'range' : '1-10', 'range_type': 'RANGE'})
         {u'progress': 0, u'state': u'PENDING', u'id': 1}
@@ -1578,7 +1495,6 @@ class VisionWebApi(object):
     def searchCapture(self, args):
         """ searchCapture :
         Search for a specific capture in the system by certain properties.
-
         Sample usage:
         >>> nto.searchCapture({'status': 'IDLE_WITH_DATA'})
         [{u'id': 177, u'name': u'L1-CAP'}]
@@ -1588,7 +1504,6 @@ class VisionWebApi(object):
     def startCapture(self, resource):
         """ startCapture :
         Starts a capture resource to capture packets via the attached filter.
-
         Sample usage:
         >>> nto.startCapture('L1-CAP')
         ''
@@ -1599,7 +1514,6 @@ class VisionWebApi(object):
     def stopCapture(self, resource):
         """ stopCapture :
         Stops a capture resource to capture packets via the attached filter.
-
         Sample usage:
         >>> nto.stopCapture('L1-CAP')
         ''
@@ -1610,7 +1524,6 @@ class VisionWebApi(object):
     def modifyCapture(self, resource, args):
         """ modifyCapture :
         Update the properties of an existing capture resource.
-
         Sample usage:
         >>> nto.modifyCapture('L1-CAP', {'buffer_size': 100})
         ''
@@ -1623,7 +1536,6 @@ class VisionWebApi(object):
     def getAllAggregators(self):
         """ getAllAggregators :
         Fetch a list containing the summaries for all the Aggregator resources in the system.
-
         Sample usage:
         """
         return self._sendRequest('GET', '/api/aggregator_resources')
@@ -1635,7 +1547,6 @@ class VisionWebApi(object):
         parameter '?properties=value', where value is comma-separated list to select
         multiple fields for ex- /api/resource_type/{object-id}?properties=description,name.
         Query Parameter is optional.
-
         Sample usage:
         """
         return self._sendRequest('GET', '/api/aggregator_resources/' + resource)
@@ -1643,7 +1554,6 @@ class VisionWebApi(object):
     def disableAggregator(self, resource, args):
         """ disableAggregator :
         Disables an Aggregator resource by disconnecting the attached port group.
-
         Sample usage:
         ''
         """
@@ -1652,7 +1562,6 @@ class VisionWebApi(object):
     def enableAggregator(self, resource, args):
         """ enableAggregator :
         Enables an Aggregator resource by attaching a port group to it.
-
         Sample usage:
         ''
         """
@@ -1661,7 +1570,6 @@ class VisionWebApi(object):
     def searchAggregator(self, args):
         """ searchAggregator :
         Search for a specific Aggregator resource in the system by certain properties.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/aggregator_resources/search', args)
@@ -1669,7 +1577,6 @@ class VisionWebApi(object):
     def modifyAggregator(self, resource, args):
         """ modifyAggregator:
         Update the properties of an existing Aggregator resource.
-
         Sample usage:
         """
         return self._sendRequest('PUT', '/api/aggregator_resources/' + resource, args, False)
@@ -1680,7 +1587,6 @@ class VisionWebApi(object):
     def getAllAtips(self):
         """ getAllAtips :
         Fetch a list containing the summaries for all the ATIP resources in the system.
-
         Sample usage:
         >>> nto.getAllAtips()
         [{u'id': 179, u'name': u'L2-ATIP'}]
@@ -1690,7 +1596,6 @@ class VisionWebApi(object):
     def getAtip(self, resource):
         """ getAtip :
         Fetch the properties of an ATIP resource.
-
         Sample usage:
         >>> nto.getAtip('L2-ATIP')
         {u'fill_to_trigger_position': False, u'description': None, u'capture_source': 304, u'lineboard_id': 173, u'default_name': u'L2-ATIP', u'resource_status': u'READY', u'name': u'L2-ATIP', u'mod_count': 5, u'license_status': u'VALID', u'modify_access_settings': {u'policy': u'REQUIRE_ADMIN', u'groups': []}, u'id': 179, u'connect_disconnect_access_settings': {u'policy': u'REQUIRE_ADMIN', u'groups': []}, u'history': [{u'type': u'MODIFY', u'time': 1442009546622, u'caused_by': u'admin', u'details': None, u'props': [u'NETFLOW_ENABLED']}]}
@@ -1700,7 +1605,6 @@ class VisionWebApi(object):
     def disableAtip(self, resource):
         """ disableAtip :
         Disables an ATIP by disconnecting the attached filter.
-
         Sample usage:
         >>> nto.disableAtip('319')
         ''
@@ -1711,7 +1615,6 @@ class VisionWebApi(object):
     def enableAtip(self, resource, args):
         """ enableAtip :
         Enables a capture by attaching a filter to it.
-
         Sample usage:
         >>> nto.enableAtip('319', {'filter_id': 'F1'})
         ''
@@ -1721,7 +1624,6 @@ class VisionWebApi(object):
     def searchAtip(self, args):
         """ searchAtip :
         Search for a specific ATIP resource in the system by certain properties.
-
         Sample usage:
         >>> nto.searchAtip({'resource_status': 'READY'})
         [{u'id': 179, u'name': u'L2-ATIP'}]
@@ -1731,7 +1633,6 @@ class VisionWebApi(object):
     def modifyAtip(self, resource, args):
         """ modifyAtip:
         Update the properties of an existing ATIP resource.
-
         Sample usage:
         >>> nto.modifyAtip('L2-ATIP', {'description': 'ATIP at slot #2'})
         ''
@@ -1744,7 +1645,6 @@ class VisionWebApi(object):
     def logout(self):
         """ logout :
         This call is used to invalidate any token returned from other calls to the web API.
-
         Sample usage:
         >>> nto.logout()
         'User -admin- has logged out.'
@@ -1763,7 +1663,6 @@ class VisionWebApi(object):
     def createInlineBypassConnector(self, args):
         """ createInlineBypassConnector :
         Create a new Inline Bypass Connector in the system.
-
         Sample usage:
         >>> nto.createInlineBypassConnector({"criteria": {"logical_operation": "AND"}, "filter_mode": "PASS_ALL", "name": "test bypass", "side_a_ports": [12], "side_b_ports": [13], "description": ""})
         {'default_name': 'BPP1', 'id': 117, 'name': 'test bypass'}
@@ -1773,7 +1672,6 @@ class VisionWebApi(object):
     def deleteInlineBypassConnector(self, bypass_id):
         """ deleteInlineBypassConnector :
         Remove an existing inline Tool Bypass from the system.
-
         Sample usage:
         >>> nto.deleteInlineBypassConnector('117')
         b''
@@ -1783,7 +1681,6 @@ class VisionWebApi(object):
     def getInlineBypassConnector(self, bypass_id):
         """ getInlineBypassConnector :
         Fetch the properties of an Inline Bypass Connector.
-
         Sample usage:
         >>> nto.getInlineBypassConnector('test bypass')
         {'connect_access_settings': {'groups': [], 'policy': 'INHERITED'}, 'created': {'caused_by': 'admin', 'details': None, 'time': 1605730853970, 'type': 'CREATE'}, 'criteria': {'logical_operation': 'AND'}, 'default_name': 'BPP1', 'description': '', 'filter_mode': 'PASS_ALL', 'history': None, 'id': 117, 'inline_service_chain_list': [], 'inline_service_chain_priority_list': [], 'lfd_enabled': False, 'local_lfd_ports': [], 'misc': {'access_map': {'CONNECT_ACCESS_SETTINGS': {'access_settings': {'groups': [], 'policy': 'INHERITED'}, 'affecting_ports': {'12': 'Allow All', '13': 'Allow All'}, 'affecting_resource': {}, 'current_value': 'All users. Derived from *P10 (in BPP1), P11 (in BPP1): Allow All', 'expression_text': 'All users.', 'operation_name': 'Connect Service Chains', 'operation_phrase': 'connect service chains to', 'tooltip': 'Inherit from Ports', 'user_names': '', 'users_statement': 'Anyone can perform'}, 'MODIFY_ACCESS_SETTINGS': {'access_settings': {'groups': [], 'policy': 'INHERITED'}, 'affecting_ports': {'12': 'Allow All', '13': 'Allow All'}, 'affecting_resource': {}, 'current_value': 'All users. Derived from *P10 (in BPP1), P11 (in BPP1): Allow All', 'expression_text': 'All users.', 'operation_name': 'Modify', 'operation_phrase': 'modify', 'tooltip': 'Inherit from Ports', 'user_names': '', 'users_statement': 'Anyone can perform'}}, 'access_props': ['MODIFY_ACCESS_SETTINGS', 'CONNECT_ACCESS_SETTINGS']}, 'mod_count': 1, 'modify_access_settings': {'groups': [], 'policy': 'INHERITED'}, 'name': 'test bypass', 'peer_lfd_ports': [], 'side_a_port_group': 115, 'side_a_ports': [12], 'side_b_port_group': 116, 'side_b_ports': [13], 'vlan': 2001, 'vlan_translation_setting': {'translation_map': []}}
@@ -1793,7 +1690,6 @@ class VisionWebApi(object):
     def getAllInlineBypasseConnectors(self):
         """ getAllInlineBypasseConnectors :
         Fetch a list containing the summaries for all the Inline Bypass Connectors in the system.
-
         Sample usage:
         >>> nto.getAllInlineBypasseConnectors()
         [{'id': 117, 'name': 'test bypass'}]
@@ -1803,18 +1699,15 @@ class VisionWebApi(object):
     def searchInlineBypassConnectors(self, args):
         """ searchInlineBypassConnectors :
         Search for a specific Inline Bypass Connector in the system by certain properties.
-
         Sample usage:
         >>> nto.searchInlineBypassConnectors({"filter_mode": "PASS_ALL"})
         [{'connect_access_settings': {'groups': [], 'policy': 'INHERITED'}, 'created': {'caused_by': 'admin', 'details': None, 'time': 1605730853970, 'type': 'CREATE'}, 'criteria': {'logical_operation': 'AND'}, 'default_name': 'BPP1', 'description': '', 'filter_mode': 'PASS_ALL', 'history': None, 'id': 117, 'inline_service_chain_list': [], 'inline_service_chain_priority_list': [], 'lfd_enabled': False, 'local_lfd_ports': [], 'misc': {'access_map': {'CONNECT_ACCESS_SETTINGS': {'access_settings': {'groups': [], 'policy': 'INHERITED'}, 'affecting_ports': {'12': 'Allow All', '13': 'Allow All'}, 'affecting_resource': {}, 'current_value': 'All users. Derived from *P10 (in BPP1), P11 (in BPP1): Allow All', 'expression_text': 'All users.', 'operation_name': 'Connect Service Chains', 'operation_phrase': 'connect service chains to', 'tooltip': 'Inherit from Ports', 'user_names': '', 'users_statement': 'Anyone can perform'}, 'MODIFY_ACCESS_SETTINGS': {'access_settings': {'groups': [], 'policy': 'INHERITED'}, 'affecting_ports': {'12': 'Allow All', '13': 'Allow All'}, 'affecting_resource': {}, 'current_value': 'All users. Derived from *P10 (in BPP1), P11 (in BPP1): Allow All', 'expression_text': 'All users.', 'operation_name': 'Modify', 'operation_phrase': 'modify', 'tooltip': 'Inherit from Ports', 'user_names': '', 'users_statement': 'Anyone can perform'}}, 'access_props': ['MODIFY_ACCESS_SETTINGS', 'CONNECT_ACCESS_SETTINGS']}, 'mod_count': 1, 'modify_access_settings': {'groups': [], 'policy': 'INHERITED'}, 'name': 'test bypass', 'peer_lfd_ports': [], 'side_a_port_group': 115, 'side_a_ports': [12], 'side_b_port_group': 116, 'side_b_ports': [13], 'vlan': 2001, 'vlan_translation_setting': {'translation_map': []}}]
-
         """
         return self._sendRequest('POST', '/api/bypass_connectors/search', args)
 
     def modifyInlineBypassConnector(self, bypass_id, args):
         """ modifyInlineBypassConnector:
         Update the properties of an existing Inline Bypass Connector.
-
         Sample usage:
         >>> nto.modifyInlineBypassConnector('117', {"side_b_ports": [14]})
         b''
@@ -1830,7 +1723,6 @@ class VisionWebApi(object):
     def disableAnalysisEngine(self, ae_id):
         """ disableAnalysisEngine :
         Detaches an IFC Analysis Engine resource from a filter.
-
         Sample usage:
         """
         args = {}
@@ -1839,7 +1731,6 @@ class VisionWebApi(object):
     def enableAnalysisEngine(self, ae_id, args):
         """ enableAnalysisEngine :
         Attaches an IFC Analysis Engine resource to a filter.
-
         Sample usage:
         """
         return self._sendRequest('PUT', '/api/cte_ae_resources/' + ae_id + '/enable', args)
@@ -1847,7 +1738,6 @@ class VisionWebApi(object):
     def getAnalysisEngine(self, ae_id):
         """ getAnalysisEngine :
         Fetch the properties of an IFC Analysis Engine resource.
-
         Sample usage:
         """
         return self._sendRequest('GET', '/api/cte_ae_resources/' + ae_id)
@@ -1855,7 +1745,6 @@ class VisionWebApi(object):
     def getAllAnalysisEngines(self, args):
         """ getAllAnalysisEngines :
         Fetch a list containing the summaries for all IFC Analysis Engine resources.
-
         Sample usage:
         """
         return self._sendRequest('GET', '/api/cte_ae_resources')
@@ -1863,7 +1752,6 @@ class VisionWebApi(object):
     def searchAnalysisEngine(self, args):
         """ searchAnalysisEngine :
         Search a specific IFC Analysis Engine resource by certain properties.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/cte_ae_resources', args)
@@ -1871,7 +1759,6 @@ class VisionWebApi(object):
     def modifyAnalysisEngine(self, ae_id, args):
         """ modifyAnalysisEngine :
         Update the properties of an existing IFC Analysis Engine Resource.
-
         Sample usage:
         """
         return self._sendRequest('PUT', '/api/cte_ae_resources/' + ae_id, args, False)
@@ -1882,7 +1769,6 @@ class VisionWebApi(object):
     def getAllCteCaptures(self):
         """ getAllCteCaptures :
         Fetch a list containing the summaries for all the captures in the system.
-
         Sample usage:
         """
         return self._sendRequest('GET', '/api/cte_capture_resources')
@@ -1890,7 +1776,6 @@ class VisionWebApi(object):
     def getCteCapture(self, resource):
         """ getCteCapture :
         Fetch the properties of a capture object.
-
         Sample usage:
         """
         return self._sendRequest('GET', '/api/cte_capture_resources/' + resource)
@@ -1898,7 +1783,6 @@ class VisionWebApi(object):
     def deleteCteCaptureFile(self, resource, args):
         """ deleteCteCaptureFile :
         Deletes a capture file from a capture resource.
-
         Sample usage:
         """
         return self._sendRequest('PUT', '/api/cte_capture_resources/' + resource + '/delete_file ', args, False)
@@ -1906,7 +1790,6 @@ class VisionWebApi(object):
     def disableCteCapture(self, resource):
         """ disableCteCapture :
         Detaches an IFC Capture resource from a filter.
-
         Sample usage:
         """
         args = {}
@@ -1915,7 +1798,6 @@ class VisionWebApi(object):
     def downloadCteCaptureFile(self, resource, args, local_file_name=None):
         """ downloadCteCaptureFile :
         Downloads a capture file of capture resource.
-
         Sample usage:
         """
 
@@ -1933,7 +1815,6 @@ class VisionWebApi(object):
     def enableCteCapture(self, resource, args):
         """ enableCteCapture :
         Attaches an IFC Capture resource to a filter.
-
         Sample usage:
         """
         return self._sendRequest('PUT', '/api/cte_capture_resources/' + resource + '/enable', args, False)
@@ -1941,7 +1822,6 @@ class VisionWebApi(object):
     def listCteCaptureFiles(self, resource):
         """ listCteCaptureFiles :
         Fetch a list containing the summaries for all the captures in the system.
-
         Sample usage:
         """
         args = {}
@@ -1950,7 +1830,6 @@ class VisionWebApi(object):
     def resetCteCaptureBuffer(self, resource):
         """ resetCteCaptureBuffer :
         Resets / clears the capture resource buffer.
-
         Sample usage:
         """
         args = {}
@@ -1959,7 +1838,6 @@ class VisionWebApi(object):
     def saveCteBufferCapture(self, resource, args):
         """ saveCteBufferCapture :
         Search for a specific capture in the system by certain properties.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/cte_capture_resources/' + resource + '/save_buffer', args)
@@ -1967,7 +1845,6 @@ class VisionWebApi(object):
     def searchCteCapture(self, args):
         """ searchCteCapture :
         Search for a specific capture in the system by certain properties.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/cte_capture_resources/search', args)
@@ -1975,7 +1852,6 @@ class VisionWebApi(object):
     def startCteCapture(self, resource):
         """ startCteCapture :
         Starts a capture resource to capture packets via the attached filter.
-
         Sample usage:
         """
         return self._sendRequest('PUT', '/api/cte_capture_resources/' + resource + '/start', {}, False)
@@ -1983,7 +1859,6 @@ class VisionWebApi(object):
     def stopCteCapture(self, resource):
         """ stopCteCapture :
         Stops a capture resource to capture packets via the attached filter.
-
         Sample usage:
         """
         return self._sendRequest('PUT', '/api/cte_capture_resources/' + resource + '/stop', {}, False)
@@ -1991,7 +1866,6 @@ class VisionWebApi(object):
     def modifyCteCapture(self, resource, args):
         """ modifyCteCapture :
         Update the properties of an existing capture resource.
-
         Sample usage:
         """
         return self._sendRequest('PUT', '/api/cte_capture_resources/' + resource, args, False)
@@ -2002,7 +1876,6 @@ class VisionWebApi(object):
     def getCteCluster(self, args):
         """ getCteCluster :
         Retrieve the properties of the CTE cluster.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/cte_cluster', args)
@@ -2013,7 +1886,6 @@ class VisionWebApi(object):
     def createCteConnection(self, args):
         """ createCteConnection :
         Create a new CTE connection in the system.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/cte_connections', args)
@@ -2021,7 +1893,6 @@ class VisionWebApi(object):
     def deleteCteConnection(self, cte_id):
         """ deleteCteConnection :
         Remove a CTE connection.
-
         Sample usage:
         """
         return self._sendRequest('DELETE', '/api/cte_connections/' + cte_id, None, False)
@@ -2029,7 +1900,6 @@ class VisionWebApi(object):
     def getCteConnection(self, cte_id):
         """ getCteConnection :
         Fetch the properties of a CTE connection.
-
         Sample usage:
         """
         return self._sendRequest('GET', '/api/cte_connections/' + cte_id)
@@ -2037,7 +1907,6 @@ class VisionWebApi(object):
     def getAllCteConnections(self):
         """ getAllCteConnections :
         Fetch a list containing the summaries for all the CTE connections.
-
         Sample usage:
         """
         return self._sendRequest('GET', '/api/cte_connections')
@@ -2045,7 +1914,6 @@ class VisionWebApi(object):
     def searchCteConnection(self, args):
         """ searchCteConnection :
         Search a specific CTE connection by certain properties.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/cte_connections/search', args)
@@ -2053,7 +1921,6 @@ class VisionWebApi(object):
     def modifyCteConnection(self, cte_id, args):
         """ modifyCteConnection :
         Update the properties of an existing CTE connection.
-
         Sample usage:
         """
         return self._sendRequest('PUT', '/api/cte_connections/' + cte_id, args, False)
@@ -2064,7 +1931,6 @@ class VisionWebApi(object):
     def createCteFilter(self, args):
         """ createCteFilter :
         Create a new CTE filter in the system.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/cte_filters', args)
@@ -2072,7 +1938,6 @@ class VisionWebApi(object):
     def deleteCteFilter(self, cte_filter_id):
         """ deleteCteFilter :
         Remove a CTE filter.
-
         Sample usage:
         """
         return self._sendRequest('DELETE', '/api/cte_filters/' + cte_filter_id, None, False)
@@ -2080,7 +1945,6 @@ class VisionWebApi(object):
     def getCteFilter(self, cte_filter_id):
         """ getCteFilter :
         Fetch the properties of a CTE filter.
-
         Sample usage:
         """
         return self._sendRequest('GET', '/api/cte_filters/' + cte_filter_id)
@@ -2088,7 +1952,6 @@ class VisionWebApi(object):
     def getAllCteFilters(self):
         """ getAllCteFilters :
         Fetch a list containing the summaries for all the CTE filters.
-
         Sample usage:
         """
         return self._sendRequest('GET', '/api/cte_filters')
@@ -2096,7 +1959,6 @@ class VisionWebApi(object):
     def searchCteFilter(self, args):
         """ searchCteFilter :
         Search a specific CTE filter by certain properties.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/cte_filters/search', args)
@@ -2104,7 +1966,6 @@ class VisionWebApi(object):
     def modifyCteFilter(self, cte_filter_id, args):
         """ modifyCteFilter :
         Update the properties of an existing CTE connection.
-
         Sample usage:
         """
         return self._sendRequest('PUT', '/api/cte_filters/' + cte_filter_id, args, False)
@@ -2115,7 +1976,6 @@ class VisionWebApi(object):
     def getCteMember(self, cte_member_id):
         """ getCteMember :
         Fetch the properties of a CTE member.
-
         Sample usage:
         """
         return self._sendRequest('GET', '/api/cte_members/' + cte_member_id)
@@ -2123,7 +1983,6 @@ class VisionWebApi(object):
     def getAllCteMembers(self):
         """ getAllCteMembers :
         Fetch a list containing the summaries for all the CTE members.
-
         Sample usage:
         """
         return self._sendRequest('GET', '/api/cte_members')
@@ -2131,7 +1990,6 @@ class VisionWebApi(object):
     def searchCteMember(self, args):
         """ searchCteMember :
         Search a specific CTE member by certain properties.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/cte_members/search', args)
@@ -2139,7 +1997,6 @@ class VisionWebApi(object):
     def modifyCteMember(self, cte_member_id, args):
         """ modifyCteMember :
         Update the properties of an existing IFC Member.
-
         Sample usage:
         """
         return self._sendRequest('PUT', '/api/cte_members/' + cte_member_id, args, False)
@@ -2150,7 +2007,6 @@ class VisionWebApi(object):
     def createCteMonitor(self, args):
         """ createCteMonitor :
         The IFC monitors resource.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/cte_monitors', args)
@@ -2158,7 +2014,6 @@ class VisionWebApi(object):
     def deleteCteMonitor(self, cte_monitor_id):
         """ deleteCteMonitor :
         Remove an IFC monitor.
-
         Sample usage:
         """
         return self._sendRequest('DELETE', '/api/cte_monitors/' + cte_monitor_id, None, False)
@@ -2166,7 +2021,6 @@ class VisionWebApi(object):
     def getCteMonitor(self, cte_monitor_id):
         """ getCteMonitor :
         Fetch the properties of an IFC monitor.
-
         Sample usage:
         """
         return self._sendRequest('GET', '/api/cte_monitors/' + cte_monitor_id)
@@ -2174,7 +2028,6 @@ class VisionWebApi(object):
     def getAllCteMonitors(self):
         """ getAllCteMonitors :
         Fetch a list containing the summaries for all IFC monitors.
-
         Sample usage:
         """
         return self._sendRequest('GET', '/api/cte_monitors')
@@ -2182,7 +2035,6 @@ class VisionWebApi(object):
     def searchCteMonitor(self, args):
         """ searchCteMonitor :
         Search a specific IFC monitor by certain properties.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/cte_monitors/search', args)
@@ -2190,7 +2042,6 @@ class VisionWebApi(object):
     def modifyCteMonitor(self, cte_monitor_id, args):
         """ modifyCteMonitor :
         Update the properties of an existing IFC monitor.
-
         Sample usage:
         """
         return self._sendRequest('PUT', '/api/cte_monitors/' + cte_monitor_id, args, False)
@@ -2201,7 +2052,6 @@ class VisionWebApi(object):
     def disableCteNetflowResource(self, cte_netflow_resource_id, args):
         """ disableCteNetflowResource :
         Detaches an IFC Netflow resource from an IFC filter.
-
         Sample usage:
         """
         return self._sendRequest('PUT', '/api/cte_netflow_resources/' + cte_netflow_resource_id + '/disable', args, False)
@@ -2209,7 +2059,6 @@ class VisionWebApi(object):
     def enableCteNetflowResource(self, cte_netflow_resource_id, args):
         """ enableCteNetflowResource :
         Attaches an IFC Netflow to an IFC filter.
-
         Sample usage:
         """
         return self._sendRequest('PUT', '/api/cte_netflow_resources/' + cte_netflow_resource_id + '/enable', args, False)
@@ -2217,7 +2066,6 @@ class VisionWebApi(object):
     def getCteNetflowResourceBandwidth(self, cte_netflow_resource_id):
         """ getCteNetflowResourceBandwidth :
         Gets the bandwidth details for the IFC Netflow resource.
-
         Sample usage:
         """
         return self._sendRequest('GET', '/api/cte_netflow_resources/' + cte_netflow_resource_id + '/get_bandwidth_details')
@@ -2225,7 +2073,6 @@ class VisionWebApi(object):
     def getCteNetflowResource(self, cte_netflow_resource_id):
         """ getCteNetflowResource :
         Fetch the properties of an IFC Netflow resource.
-
         Sample usage:
         """
         return self._sendRequest('GET', '/api/cte_netflow_resources/' + cte_netflow_resource_id)
@@ -2233,7 +2080,6 @@ class VisionWebApi(object):
     def getAllCteNetflowResources(self):
         """ getAllCteNetflowResources :
         Fetch a list containing the summaries for all IFC Netflow resources.
-
         Sample usage:
         """
         return self._sendRequest('GET', '/api/cte_netflow_resources')
@@ -2241,7 +2087,6 @@ class VisionWebApi(object):
     def searchCteNetflowResource(self, args):
         """ searchCteNetflowResource :
         Search a specific IFC Netflow resource by certain properties.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/cte_netflow_resources/search', args)
@@ -2249,7 +2094,6 @@ class VisionWebApi(object):
     def modifyCteNetflowResource(self, cte_netflow_resource_id, args):
         """ modifyCteNetflowResource :
         Update the properties of an existing IFC Netflow resource.
-
         Sample usage:
         """
         return self._sendRequest('PUT', '/api/cte_netflow_resources/' + cte_netflow_resource_id, args, False)
@@ -2262,7 +2106,6 @@ class VisionWebApi(object):
         This action will change the role of a node in the cluster. If the node is
         CONTROLLER, then it will become FABRIC. IF the node is FABRIC, then it will
         become CONTROLLER.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/cte_operations/change_role', args)
@@ -2270,7 +2113,6 @@ class VisionWebApi(object):
     def clearCteAeChannelStatsHistory(self, args):
         """ clearCteAeChannelStatsHistory :
         Clears the Burst and/or Latency & Jitter Stats History Files from the Disk per AE.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/cte_operations/cte_clear_ae_channel_statistics_history', args)
@@ -2278,7 +2120,6 @@ class VisionWebApi(object):
     def clearCteConfig(self):
         """ clearCteConfig :
         Create a CTE topology.
-
         Sample usage:
         """
         args = {}
@@ -2287,7 +2128,6 @@ class VisionWebApi(object):
     def clearCteFiltersAndPort(self):
         """ clearCteFiltersAndPort :
         This command deletes all filters and port groups and sets all ports to default values..
-
         Sample usage:
         """
         args = {}
@@ -2296,7 +2136,6 @@ class VisionWebApi(object):
     def createCteTopology(self, args):
         """ createCteTopology :
         Create a CTE topology.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/cte_operations/create_topology', args)
@@ -2306,7 +2145,6 @@ class VisionWebApi(object):
         Disband the CTE topology. The local device and all other members
         that can be notified will be forced out of the topology. Manual
         disband on unreachable devices is required to recover them.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/cte_operations/disband_topology', args)
@@ -2314,7 +2152,6 @@ class VisionWebApi(object):
     def discoverCteConnections(self):
         """ discoverCteConnections :
         Discover and create direct connections between members in IFC topology.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/cte_operations/discover_connections')
@@ -2322,7 +2159,6 @@ class VisionWebApi(object):
     def exportCteTopology(self, args):
         """ exportCteTopology :
         Export topology configuration to a file.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/cte_operations/export', args)
@@ -2331,7 +2167,6 @@ class VisionWebApi(object):
         """ forceRemoveFromCteTopology :
         Given a failed member of a CTE topology by its IPv4 address, force
         remove it from the topology.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/cte_operations/force_remove', args)
@@ -2340,7 +2175,6 @@ class VisionWebApi(object):
         """ getCteAvailableFilterCriteria :
         Return a list of filter criteria which can be used given an already present set of filter criteria.
         This action is useful for a user interface which defines a filter.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/cte_operations/cte_get_available_filter_criteria', args)
@@ -2353,7 +2187,6 @@ class VisionWebApi(object):
         records. If only a list of members is specified, then will return all discovered LLDP neighbors for all
         ports from these members. If only a list of ports is specified, then will return all discovered LLDP
         neighbors for specified ports.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/cte_operations/cte_get_neighbors', args)
@@ -2361,7 +2194,6 @@ class VisionWebApi(object):
     def getPortTunnelingInfo(self):
         """ getPortTunnelingInfo :
         Get the tunnel termination and origination settings.
-
         Sample usage:
         """
         args = {}
@@ -2370,7 +2202,6 @@ class VisionWebApi(object):
     def importCteTopology(self, args):
         """ importCteTopology :
         Import topology configuration from a file.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/cte_operations/import', args)
@@ -2378,7 +2209,6 @@ class VisionWebApi(object):
     def installCteDtsp(self, args):
         """ installCteDtsp :
         Install TradeVision DTSP to all the TradeVision boxes in the IFC.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/cte_operations/cte_install_dtsp', args)
@@ -2387,7 +2217,6 @@ class VisionWebApi(object):
         """ interruptCteAnalysisEngineTraffic :
         Interrupt traffic for a given analysis engine (AE).
         This will temporarily (10 sec) turn off traffic to AE.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/cte_operations/cte_interrupt_ae_traffic', args)
@@ -2395,7 +2224,6 @@ class VisionWebApi(object):
     def joinCteTopology(self, args):
         """ joinCteTopology :
         Join the current stack to a CTE topology.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/cte_operations/join_topology', args)
@@ -2404,7 +2232,6 @@ class VisionWebApi(object):
         """ leaveCteTopology :
         Given a member of a CTE topology by its IPv4 address, this action will
         disconnect it from the topology.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/cte_operations/leave_topology', args)
@@ -2413,7 +2240,6 @@ class VisionWebApi(object):
         """ optimizeCteRoutes :
         This command will perform route reconfiguration to ensure maximum filter coverage and
         better traffic load balancing across the cluster.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/cte_operations/optimize_routes', args)
@@ -2421,7 +2247,6 @@ class VisionWebApi(object):
     def resetCteEventRateLimiterStatus(self, args):
         """ resetCteEventRateLimiterStatus :
         Reset the event rate limiter status for the given event type.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/cte_operations/cte_reset_event_rate_limiter_status', args)
@@ -2430,7 +2255,6 @@ class VisionWebApi(object):
         """ updateCteUpdateSingleIpAddress :
         This action allows a single IP address to be added to or removed
         from a filter with an existing IP address criterion.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/cte_operations/cte_update_single_ip_addr', args)
@@ -2441,7 +2265,6 @@ class VisionWebApi(object):
     def createCtePortGroup(self, args):
         """ createCtePortGroup :
         Create a new IFC port group in the system.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/cte_port_groups', args)
@@ -2449,7 +2272,6 @@ class VisionWebApi(object):
     def deleteCtePortGroup(self, cte_port_group_id):
         """ deleteCtePortGroup :
         Remove an IFC port group.
-
         Sample usage:
         """
         return self._sendRequest('DELETE', '/api/cte_port_groups/' + cte_port_group_id + '/disable', {}, False)
@@ -2457,7 +2279,6 @@ class VisionWebApi(object):
     def disableCtePortGroup(self, cte_port_group_id):
         """ disableCtePortGroup :
         Disables an IFC port group by disabling all contained IFC ports.
-
         Sample usage:
         """
         return self._sendRequest('PUT', '/api/cte_port_groups/' + cte_port_group_id, {}, False)
@@ -2465,7 +2286,6 @@ class VisionWebApi(object):
     def enableCtePortGroup(self, cte_port_group_id):
         """ enableCtePortGroup :
         Enables an IFC port group by enabling all contained IFC ports.
-
         Sample usage:
         """
         return self._sendRequest('PUT', '/api/cte_port_groups/' + cte_port_group_id + '/enable', {}, False)
@@ -2473,7 +2293,6 @@ class VisionWebApi(object):
     def getCtePortGroup(self, cte_port_group_id):
         """ getCtePortGroup :
         Fetch the properties of a CTE port group.
-
         Sample usage:
         """
         return self._sendRequest('GET', '/api/cte_port_groups/' + cte_port_group_id)
@@ -2481,7 +2300,6 @@ class VisionWebApi(object):
     def getAllCtePortGroups(self):
         """ getAllCtePortGroups :
         Fetch a list containing the summaries for all the CTE port groups.
-
         Sample usage:
         """
         return self._sendRequest('GET', '/api/cte_port_groups')
@@ -2489,7 +2307,6 @@ class VisionWebApi(object):
     def searchCtePortGroup(self, args):
         """ searchCtePortGroup :
         Search a specific CTE port group by certain properties.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/cte_port_groups/search', args)
@@ -2497,7 +2314,6 @@ class VisionWebApi(object):
     def modifyCtePortGroup(self, cte_port_group_id, args):
         """ modifyCtePortGroup :
         Update the properties of an existing IFC port group.
-
         Sample usage:
         """
         return self._sendRequest('PUT', '/api/cte_port_groups/' + cte_port_group_id, args, False)
@@ -2509,7 +2325,6 @@ class VisionWebApi(object):
         """ createCtePort :
         Create a new CTE port on the system. This can be used only to
         create virtual ports for GRE origination on a Vision 7300 system.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/cte_ports', args)
@@ -2518,7 +2333,6 @@ class VisionWebApi(object):
         """ deleteCtePort :
         Remove a CTE port from the system. This can be used only to
         remove virtual ports for GRE origination on a Vision 7300 system.
-
         Sample usage:
         """
         return self._sendRequest('DELETE', '/api/cte_ports/' + cte_port_id, {}, False)
@@ -2526,7 +2340,6 @@ class VisionWebApi(object):
     def getCtePort(self, cte_port_id):
         """ getCtePort :
         Fetch the properties of a CTE port.
-
         Sample usage:
         """
         return self._sendRequest('GET', '/api/cte_ports/' + cte_port_id)
@@ -2534,7 +2347,6 @@ class VisionWebApi(object):
     def getAllCtePorts(self):
         """ getAllCtePorts :
         Fetch a list containing the summaries for all the CTE ports.
-
         Sample usage:
         """
         return self._sendRequest('GET', '/api/cte_ports')
@@ -2542,7 +2354,6 @@ class VisionWebApi(object):
     def searchCtePortGroup(self, args):
         """ searchCtePortGroup :
         Search a specific CTE port by certain properties.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/cte_ports/search', args)
@@ -2550,7 +2361,6 @@ class VisionWebApi(object):
     def modifyCtePort(self, cte_port_id, args):
         """ modifyCtePort :
         Update the properties of an existing IFC port.
-
         Sample usage:
         """
         return self._sendRequest('PUT', '/api/cte_ports/' + cte_port_id, args, False)
@@ -2561,7 +2371,6 @@ class VisionWebApi(object):
     def getAllIfcRoutes(self):
         """ getAllIfcRoutes :
         Fetch a list containing the summaries for all IFC routes.
-
         Sample usage:
         """
         return self._sendRequest('GET', '/api/cte_routes/')
@@ -2569,7 +2378,6 @@ class VisionWebApi(object):
     def getIfcRoute(self, ifc_route_id):
         """ getIfcRoute :
         Fetch the properties of an IFC route.
-
         Sample usage:
         """
         return self._sendRequest('GET', '/api/cte_routes/' + ifc_route_id)
@@ -2577,7 +2385,6 @@ class VisionWebApi(object):
     def searchIfcRoute(self, args):
         """ searchIfcRoute :
         Search a specific IFC route by certain properties.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/cte_routes/search', args)
@@ -2588,7 +2395,6 @@ class VisionWebApi(object):
         """ getAllCtes :
         Fetch a list containing the summaries for all the CTE remote
         systems available on this device.
-
         Sample usage:
         """
         return self._sendRequest('GET', '/api/cte_remote_system')
@@ -2596,7 +2402,6 @@ class VisionWebApi(object):
     def getCte(self, cte_id):
         """ getCte :
         Fetch the properties of a CTE remote system available on the local device.
-
         Sample usage:
         """
         return self._sendRequest('GET', '/api/cte_remote_system/' + cte_id)
@@ -2604,7 +2409,6 @@ class VisionWebApi(object):
     def connectCte(self, args):
         """ connectCte :
         Make a new CTE remote system available on the local device.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/cte_remote_system', args)
@@ -2612,7 +2416,6 @@ class VisionWebApi(object):
     def disconnectCte(self, cte_id):
         """ disconnectCte :
         Remove a CTE remote system from the local device.
-
         Sample usage:
         """
         args = {}
@@ -2621,7 +2424,6 @@ class VisionWebApi(object):
     def searchCte(self, args):
         """ searchCte :
         Search by certain properties for a specific CTE remote systems available on this device.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/cte_remote_system/search', args)
@@ -2629,7 +2431,6 @@ class VisionWebApi(object):
     def modifyCte(self, cte_id, args):
         """ modifyCte :
         Update the connection details of a CTE remote system available on the local device.
-
         Sample usage:
         """
         return self._sendRequest('PUT', '/api/cte_remote_system/' + cte_id, args, False)
@@ -2641,7 +2442,6 @@ class VisionWebApi(object):
     def getAllIcons(self):
         """ getAllIcons :
         Fetch a list containing summaries for all custom icons in the system.
-
         Sample usage:
         >>> nto.getAllIcons()
         [{u'id': 71, u'name': u'JuniperLogoLarge'}, {u'id': 70, u'name': u'Tektronix'}, {u'id': 69, u'name': u'JDSU'}, {u'id': 68, u'name': u'Cisco'}, {u'id': 75, u'name': u'A Big Bomb!'}]
@@ -2651,7 +2451,6 @@ class VisionWebApi(object):
     def getIcon(self, icon):
         """ getIcon :
         Fetch the properties of a custom icon which is specified by its custom_icon_id_or_name.
-
         Samle usage:
         >>> nto.getIcon('75')
         {u'description': u'A bomb!', u'created': {u'type': u'CREATE', u'caused_by': u'admin', u'details': None, u'time': 1440623340772}, u'name': u'A Big Bomb!', u'mod_count': 2, u'id': 75, u'history': [{u'type': u'MODIFY', u'time': 1440623518301, u'caused_by': u'admin', u'details': None, u'props': [u'NAME']}]}
@@ -2661,7 +2460,6 @@ class VisionWebApi(object):
     def createIcon(self, args):
         """ createIcon :
         Create a new custom icon.
-
         Sample usage:
         >>> nto.createIcon({'description': 'A bomb!', 'file_name': '/Users/fmota/Desktop/bomb.jpeg', 'name' : 'Bomb'})
         {u'id': u'75'}
@@ -2720,7 +2518,6 @@ class VisionWebApi(object):
     def modifyIcon(self, icon_id, args):
         """ modifyIcon :
         Update properties of a custom icon.
-
         Sample usage:
         >>> nto.modifyIcon('75', {'name' : 'A Big Bomb!'})
         ''
@@ -2730,7 +2527,6 @@ class VisionWebApi(object):
     def searchIcon(self, args):
         """ searchIcon :
         Search for a specific custom icon in the system by certain properties.
-
         Sample usage:
         >>> nto.searchIcon({'name' : 'A Big Bomb!'})
         [{u'id': 75, u'name': u'A Big Bomb!'}]
@@ -2741,7 +2537,6 @@ class VisionWebApi(object):
         """ deleteIcon :
         Remove a custom icon from the system.
         The custom icon is specified by a custom_icon_id_or_name.
-
         Sample usage:
         >>>.deleteIcon('75')
         ''
@@ -2754,7 +2549,6 @@ class VisionWebApi(object):
     def getAllFilterTemplateCollections(self):
         """ getAllFilterTemplateCollections :
         Fetch a list containing summaries for all the filter template collections in the system.
-
         Sample usage:
         >>> nto.getAllFilterTemplateCollections()
         [{u'id': 467, u'name': u'NET_TROUBLESHOOTING'}, {u'id': 57, u'name': u'Public'}]
@@ -2765,7 +2559,6 @@ class VisionWebApi(object):
         """ getFilterTemplateCollection :
         Fetch the properties of a filter template collection object which is specified by its
         filter_template_collection_id_or_name.
-
         Sample usage:
         >>> nto.getFilterTemplateCollection('467')
         {u'description': None, u'created': {u'type': u'CREATE', u'caused_by': u'admin', u'details': None, u'time': 1429303086082}, u'name': u'NET_TROUBLESHOOTING', u'mod_count': 2, u'id': 467, u'history': []}
@@ -2775,7 +2568,6 @@ class VisionWebApi(object):
     def createFilterTemplateCollection(self, args):
         """ createFilterTemplateCollection :
         Create a new filter template collection.
-
         Sample usage:
         >>> nto.createFilterTemplateCollection({'description': 'My filter collection', 'name': 'Private Filter Collection'})
         {u'id': u'50'}
@@ -2785,7 +2577,6 @@ class VisionWebApi(object):
     def modifyFilterTemplateCollection(self, filter_template_collection_id, args):
         """ modifyFilterTemplateCollection :
         Update properties of a filter template collection.
-
         Sample usage:
         >>> nto.modifyFilterTemplateCollection('50', {'description': 'My private filter collection'})
         ''
@@ -2795,7 +2586,6 @@ class VisionWebApi(object):
     def searchFilterTemplateCollections(self, args):
         """ searchFilterTemplateCollections :
         Search for a specific filter template collection in the system by certain properties.
-
         Sample usage:
         >>> nto.searchFilterTemplateCollections({'name': 'Private Filter Collection'})
         [{u'id': 50, u'name': u'Private Filter Collection'}]
@@ -2806,7 +2596,6 @@ class VisionWebApi(object):
         """ deleteFilterTemplate :
         Remove a filter template collection from the system. The filter is specified by a
         filter_template_collection_id_or_name.
-
         Sample usage:
         >>> nto.deleteFilterTemplateCollection('50')
         ''
@@ -2819,7 +2608,6 @@ class VisionWebApi(object):
     def getAllFilterTemplates(self):
         """ getAllFilterTemplates :
         Fetch a list containing summaries for all the filter templates in the system.
-
         Sample usage:
         >>> nto.getAllFilterTemplates()
         [{u'id': 468, u'name': u'Too Much Overhead'}, {u'id': 469, u'name': u'Syn Attack'}, {u'id': 470, u'name': u'ARP Storm'}, {u'id': 51, u'name': u'VLAN Gold'}]
@@ -2829,7 +2617,6 @@ class VisionWebApi(object):
     def getFilterTemplate(self, filter_template):
         """ getFilterTemplate :
         Fetch the properties of a filter templates object which is specified by its filter_template_id.
-
         Sample usage:
         >>> nto.getFilterTemplate('468')
         {u'description': u'Use for base line tools.  Checks ICMP and SNMP traffic.', u'created': {u'type': u'CREATE', u'caused_by': u'admin', u'details': None, u'time': 1429303123112}, u'collection': u'NET_TROUBLESHOOTING', u'name': u'Too Much Overhead', u'mod_count': 5, u'criteria': {u'logical_operation': u'AND', u'ip_protocol': {u'value': u'1'}, u'layer4_src_or_dst_port': {u'port': u'161-162'}}, u'id': 468, u'history': []}
@@ -2839,7 +2626,6 @@ class VisionWebApi(object):
     def createFilterTemplate(self, args):
         """ createFilterTemplate :
         Create a new filter template.
-
         Sample usage:
         >>> nto.createFilterTemplate({'collection': 'Public', 'name': 'Virtual Traffic', 'criteria': {'vlan': {'vlan_id': '100'}, 'logical_operation': 'AND'}})
         {u'id': u'52'}
@@ -2849,7 +2635,6 @@ class VisionWebApi(object):
     def modifyFilterTemplate(self, filter_template_id, args):
         """ modifyFilterTemplate :
         Update properties of a filter template.
-
         Sample usage:
         >>> nto.modifyFilterTemplate('52', {'criteria': {'vlan': {'vlan_id': '200'}, 'logical_operation': 'AND'}})
         ''
@@ -2859,7 +2644,6 @@ class VisionWebApi(object):
     def searchFilterTemplates(self, args):
         """ searchFilterTemplates :
         Search for a specific filter template in the system by certain properties.
-
         Sample usage:
         >>> nto.searchFilterTemplates({'collection': 'Public'})
         [{u'id': 51, u'name': u'VLAN Gold'}, {u'id': 52, u'name': u'Virtual Traffic'}]
@@ -2869,7 +2653,6 @@ class VisionWebApi(object):
     def deleteFilterTemplate(self, filter_template_id):
         """ deleteFilterTemplate :
         Remove a filter template from the system. The filter template is specified by a filter_template_id.
-
         Sample usage:
         >>> nto.deleteFilterTemplate('52')
         ''
@@ -2882,27 +2665,28 @@ class VisionWebApi(object):
     def getAllFilters(self):
         """ getAllFilters :
         Fetch a list containing summaries for all the filters in the system.
-
         Sample usage:
         >>> nto.getAllFilters()
         [{u'id': 460, u'name': u'TCP, UDP, HTTP'}, {u'id': 461, u'name': u'Voice VLANs'}, {u'id': 462, u'name': u'ARP Storm'}, {u'id': 463, u'name': u'Syn Attack'}, {u'id': 464, u'name': u'DENY HTTPS'}, {u'id': 465, u'name': u'Too Much Overhead'}, {u'id': 466, u'name': u'F4'}]
         """
         return self._sendRequest('GET', '/api/filters')
 
-    def getFilter(self, filter):
+    def getFilter(self, filter, properties=None):
         """ getFilter :
         Fetch the properties of a filter object which is specified by its filter_id_or_name.
-
         Sample usage:
         >>> nto.getFilter('461')
         {u'dynamic_filter_type': u'TWO_STAGE', u'connect_in_access_settings': {u'policy': u'INHERITED'}, u'dest_port_list': [], u'match_count_unit': u'PACKETS', u'description': None, u'resource_access_settings': {u'policy': u'INHERITED'}, u'created': None, u'modify_access_settings': {u'policy': u'INHERITED'}, u'default_name': u'F3', u'dest_port_group_list': [], u'name': u'Voice VLANs', u'mod_count': 6, u'snmp_tag': None, u'mode': u'PASS_BY_CRITERIA', u'criteria': {u'vlan': {u'priority': None, u'vlan_id': u'1000'}, u'logical_operation': u'AND'}, u'keywords': [], u'source_port_group_list': [], u'source_port_list': [410, 428], u'connect_out_access_settings': {u'policy': u'INHERITED'}, u'id': 461, u'history': [{u'type': u'MODIFY', u'time': 1442251734144, u'caused_by': u'internal', u'details': None, u'props': [u'SOURCE_PORT_LIST', u'DEST_PORT_LIST']}]}
         """
-        return self._sendRequest('GET', '/api/filters/' + filter)
+        query = ""
+        if properties:
+            query = '?properties=' + ''.join(properties.split())
+
+        return self._sendRequest('GET', '/api/filters/' + filter + query)
 
     def createFilter(self, args, allowTemporayDataLoss=False):
         """ createFilter :
         Create a new filter.
-
         Sample usage:
         >>> nto.createFilter({'source_port_list': ['218', '220'], 'dest_port_list': ['219'], 'mode': 'PASS_ALL'})
         {u'id': u'466'}
@@ -2912,7 +2696,6 @@ class VisionWebApi(object):
     def modifyFilter(self, filter_id, args, allowTemporayDataLoss=False):
         """ modifyFilter :
         Update properties of a filter.
-
         Sample usage:
         >>> nto.modifyFilter('F4', {'mode' : 'PASS_BY_CRITERIA', 'criteria' : {'logical_operation': 'AND', 'ipv4_session_flow': {'session_sets': [{'a_sessions': ['10.0.0.0/24:1', '12.0.0.0/24:1'], 'b_sessions': ['14.0.0.0/24:1', '16.0.0.0/24:1']}], 'flow_type': 'UNI'}}})
         ''
@@ -2922,7 +2705,6 @@ class VisionWebApi(object):
     def searchFilters(self, args):
         """ searchFilters :
         Search for a specific port group in the system by certain properties.
-
         Sample usage:
         >>> nto.searchFilters({'mode' : 'PASS_BY_CRITERIA'})
         [{u'id': 463, u'name': u'Syn Attack'}, {u'id': 465, u'name': u'Too Much Overhead'}, {u'id': 466, u'name': u'F8'}, {u'id': 55, u'name': u'F4'}, {u'id': 460, u'name': u'TCP, UDP, HTTP'}, {u'id': 462, u'name': u'ARP Storm'}, {u'id': 461, u'name': u'Voice VLANs'}]
@@ -2932,7 +2714,6 @@ class VisionWebApi(object):
     def deleteFilter(self, filter_id):
         """ deleteFilter :
         Remove a filter from the system. The filter is specified by a filter_id_or_name.
-
         Sample usage:
         >>> nto.deleteFilter('F4')
         ''
@@ -2943,23 +2724,23 @@ class VisionWebApi(object):
         """ getFilterProperty :
         Fetch a property of a filter object which is specified by its
         filter_id_or_name.
-
         Sample usage:
         >>> nto.getFilterProperty('F1', 'keywords')
         [u'TIME']
         """
-        return self._sendRequest('GET', '/api/filters/' + filter + '?properties=' + property)[property]
+        return self.getFilter(filter, property)[property]
+        #return self._sendRequest('GET', '/api/filters/' + filter + '?properties=' + property)[property]
 
     def getFilterProperties(self, filter, properties):
         """ getFilterProperties :
         Fetch a list of properties of a filter object which is specified by its
         filter_id_or_name.
-
         Sample usage:
         >>> nto.getFilterProperties('F1', 'mode,name')
         {u'mode': u'PASS_ALL', u'name': u'L2-Resoure-Akamai'}
         """
-        return self._sendRequest('GET', '/api/filters/' + filter + '?properties=' + properties)
+        return self.getFilter(filter, properties)
+        #return self._sendRequest('GET', '/api/filters/' + filter + '?properties=' + properties)
 
     ####################################
     # Groups
@@ -2967,7 +2748,6 @@ class VisionWebApi(object):
     def getAllGroups(self):
         """ getAllGroups :
         Fetch a list containing the summaries for all the user groups in the system.
-
         Sample usage:
         >>> nto.getAllGroups()
         [{u'id': 369, u'name': u'Security Mgmt'}, {u'id': 367, u'name': u'Network Mgmt'}, {u'id': 368, u'name': u'Security Engineering'}, {u'id': 365, u'name': u'group2'}, {u'id': 366, u'name': u'Network Operations'}, {u'id': 364, u'name': u'group1'}]
@@ -2978,7 +2758,6 @@ class VisionWebApi(object):
         """ getGroup :
         Fetch the properties of an user group object which is specified by its
         group_id_or_name.
-
         Sample usage:
         >>> nto.getGroup('369')
         {u'owners': [], u'auto_created': False, u'description': None, u'name': u'Security Mgmt', u'created': {u'type': u'CREATE', u'caused_by': u'admin', u'details': None, u'time': 1256831414761}, u'accessible_ports': [], u'mod_count': 2, u'members': [u'bbrother', u'securityguy'], u'accessible_filters': [], u'id': 369, u'history': [{u'type': u'MODIFY', u'time': 1316645263611, u'caused_by': u'internal', u'details': None, u'props': [u'ACCESSIBLE_PORTS']}]}
@@ -2988,7 +2767,6 @@ class VisionWebApi(object):
     def createGroup(self, args):
         """ createGroup :
         Create a new user group.
-
         Sample usage:
         >>> nto.createGroup({'name' : 'Automation', 'members': ['bbrother', 'jfixit']})
         {u'id': u'477'}
@@ -2998,7 +2776,6 @@ class VisionWebApi(object):
     def modifyGroup(self, group_id, args):
         """ modifyGroup :
         Update the properties of an existing user group.
-
         Sample usage:
         >>> nto.modifyGroup('Automation', {'members': ['jfixit']})
         ''
@@ -3008,7 +2785,6 @@ class VisionWebApi(object):
     def deleteGroup(self, group_id):
         """ deleteGroup :
         Remove a user from the system. The user is specified by a group_id_or_name.
-
         Sample usage:
         >>> nto.deleteGroup('477')
         ''
@@ -3018,7 +2794,6 @@ class VisionWebApi(object):
     def searchGroups(self, args):
         """ searchGroups :
         Search for a specific user group in the system by certain properties.
-
         Sample usage:
         >>> nto.searchGroups({'members': ['netopsguy']})
         [{u'id': 367, u'name': u'Network Mgmt'}]
@@ -3031,7 +2806,6 @@ class VisionWebApi(object):
     def disableGscResource(self, gsc_resource_id, args):
         """ disableGscResource :
         Disables an AFM resource by disconnecting the attached port, port group or filter.
-
         Sample usage:
         """
         return self._sendRequest('PUT', '/api/gsc_afm_resources/' + gsc_resource_id + '/disable', args, False)
@@ -3039,7 +2813,6 @@ class VisionWebApi(object):
     def enableGscResource(self, gsc_resource_id, args):
         """ enableGscResource :
         Enables an AFM resource by attaching a port, port group or filter to it.
-
         Sample usage:
         """
         return self._sendRequest('PUT', '/api/gsc_afm_resources/' + gsc_resource_id + '/enable', args, False)
@@ -3047,7 +2820,6 @@ class VisionWebApi(object):
     def getGscResourceBandwidth(self, gsc_resource_id):
         """ getGscResourceBandwidth :
         Gets the bandwidth details for the GSC AFM resource.
-
         Sample usage:
         """
         return self._sendRequest('PUT', '/api/gsc_afm_resources/' + gsc_resource_id + '/get_bandwidth_details')
@@ -3059,7 +2831,6 @@ class VisionWebApi(object):
         parameter '?properties=value', where value is comma-separated list to select
         multiple fields for example: /api/resource_type/{object-id}?properties=description,name.
         Query Parameter is optional.
-
         Sample usage:
         """
         return self._sendRequest('GET', '/api/gsc_afm_resources/' + gsc_resource_id)
@@ -3067,7 +2838,6 @@ class VisionWebApi(object):
     def getAllGscResources(self):
         """ getAllGscResources :
         Fetch a list containing the summaries for all the GSC-FD resources in the system.
-
         Sample usage:
         """
         return self._sendRequest('GET', '/api/gsc_afm_resources')
@@ -3075,7 +2845,6 @@ class VisionWebApi(object):
     def resetGscFragmentationEngine(self, gsc_resource_id):
         """ resetGscFragmentationEngine :
         Resets the GSC fragmentation engine.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/gsc_afm_resources/' + gsc_resource_id + '/reset_gsc_fragmentation_engine')
@@ -3083,7 +2852,6 @@ class VisionWebApi(object):
     def searchGscResource(self, args):
         """ searchGscResource :
         Search for a specific GSC resource in the system by certain properties.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/gsc_afm_resources/search', args)
@@ -3091,7 +2859,6 @@ class VisionWebApi(object):
     def modifyGscResource(self, gsc_resource_id, args):
         """ modifyGscResource :
         Update the properties of an existing GSC resource.
-
         Sample usage:
         """
         return self._sendRequest('PUT', '/api/gsc_afm_resources/' + gsc_resource_id, args, False)
@@ -3102,7 +2869,6 @@ class VisionWebApi(object):
     def disableGtpFdResource(self, gtp_fd_resource_id, args):
         """ disableGtpFdResource :
         Disables an AFM resource by disconnecting the attached port, port group or filter.
-
         Sample usage:
         """
         return self._sendRequest('PUT', '/api/gtp_fd_afm_resources/' + gtp_fd_resource_id + '/disable', args, False)
@@ -3110,7 +2876,6 @@ class VisionWebApi(object):
     def enableGtpFdResource(self, gtp_fd_resource_id, args):
         """ enableGtpFdResource :
         Enables an AFM resource by attaching a port, port group or filter to it.
-
         Sample usage:
         """
         return self._sendRequest('PUT', '/api/gtp_fd_afm_resources/' + gtp_fd_resource_id + '/enable', args, False)
@@ -3118,7 +2883,6 @@ class VisionWebApi(object):
     def getGtpFdResourceBandwidth(self, gtp_fd_resource_id):
         """ getGtpFdResourceBandwidth :
         Gets the bandwidth details for the Recirculated AFMresource.
-
         Sample usage:
         """
         return self._sendRequest('PUT', '/api/gtp_fd_afm_resources/' + gtp_fd_resource_id + '/get_bandwidth_details')
@@ -3126,7 +2890,6 @@ class VisionWebApi(object):
     def getGtpFdResource(self, gtp_fd_resource_id):
         """ getGtpFdResource :
         Fetch the properties of an GTP-FD resource object.
-
         Sample usage:
         """
         return self._sendRequest('GET', '/api/gtp_fd_afm_resources/' + gtp_fd_resource_id)
@@ -3134,7 +2897,6 @@ class VisionWebApi(object):
     def getAllGtpFdResources(self):
         """ getAllGtpFdResources :
         Fetch a list containing the summaries for all the GTP-FD resources in the system.
-
         Sample usage:
         """
         return self._sendRequest('GET', '/api/gtp_fd_afm_resources')
@@ -3142,7 +2904,6 @@ class VisionWebApi(object):
     def searchGtpFdResource(self, args):
         """ searchGtpFdResource :
         Search for a specific AFM resource in the system by certain properties.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/gtp_fd_afm_resources/search', args)
@@ -3150,7 +2911,6 @@ class VisionWebApi(object):
     def modifyGtpFdResource(self, gtp_fd_resource_id, args):
         """ modifyGtpFdResource :
         Update the properties of an existing AFM resource.
-
         Sample usage:
         """
         return self._sendRequest('PUT', '/api/gtp_fd_afm_resources/' + gtp_fd_resource_id, args, False)
@@ -3161,7 +2921,6 @@ class VisionWebApi(object):
     def createHeartbeat(self, args):
         """ createHeartbeat :
         Create a new tool heartbeat in the system.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/heartbeats', args)
@@ -3169,7 +2928,6 @@ class VisionWebApi(object):
     def deleteHeartbeat(self, heartbeat_id):
         """ deleteHeartbeat :
         Remove an existing tool heartbeat from the system.
-
         Sample usage:
         """
         return self._sendRequest('DELETE', '/api/heartbeats/' + heartbeat_id, None, False)
@@ -3177,7 +2935,6 @@ class VisionWebApi(object):
     def getHeartbeat(self, heartbeat_id):
         """ getHeartbeat :
         Fetch the properties of a tool heartbeat object.
-
         Sample usage:
         """
         return self._sendRequest('GET', '/api/heartbeats/' + heartbeat_id)
@@ -3185,7 +2942,6 @@ class VisionWebApi(object):
     def getAllHeartbeats(self):
         """ getAllHeartbeats :
         Fetch a list containing the summaries for all the tool heartbeats in the system.
-
         Sample usage:
         """
         return self._sendRequest('GET', '/api/heartbeats')
@@ -3193,7 +2949,6 @@ class VisionWebApi(object):
     def searchHeartbeat(self, args):
         """ searchHeartbeat :
         Search for a specific tool heartbeat in the system by certain properties.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/heartbeats/search', args)
@@ -3201,7 +2956,6 @@ class VisionWebApi(object):
     def modifyHeartbeat(self, heartbeat_id, args):
         """ modifyHeartbeat:
         Update the properties of an existing tool heartbeat.
-
         Sample usage:
         """
         return self._sendRequest('PUT', '/api/heartbeats/' + heartbeat_id, args, False)
@@ -3213,7 +2967,6 @@ class VisionWebApi(object):
         """ applyToolSharingMapInline :
         Applies the tool sharing data received to all the BPPs associated with the
         service chain key received as argument.
-
         Sample usage:
         """
         return self._sendRequest('PUT', '/api/inline_service_chains/'+ inline_id + '/applyToolSharingMap', args, False)
@@ -3222,7 +2975,6 @@ class VisionWebApi(object):
         """ applyVlanTranslationMapInline :
         Applies the vlan translation data received to all BPPs associated with the
         service chain key received as argument.
-
         Sample usage:
         """
         return self._sendRequest('PUT', '/api/inline_service_chains/'+ inline_id + '/applyVlanTranslationMap', args, False)
@@ -3230,7 +2982,6 @@ class VisionWebApi(object):
     def createInlineServiceChain(self, args):
         """ createInlineServiceChain :
         Create a new inline service chain in the system.
-
         Sample usage:
         >>> nto.createInlineServiceChain({"bypass_connector_list": [120], "criteria": {"logical_operation": "AND", "vlan": [{"priority": None, "vlan_id": "100" }]}, "direction": "BIDI", "filter_mode": "PASS_BY_CRITERIA", "name": "Secure SC Python", "tool_resource_map": [{"tool_resource_failure_action": "FAIL_CLOSED", "tool_resource_id": 114}], "tool_sharing_enable": False, "vlan_translation_enabled": False})
         {'default_name': 'SC1', 'id': 121, 'name': 'Secure SC Python'}
@@ -3240,7 +2991,6 @@ class VisionWebApi(object):
     def deleteInlineServiceChain(self, inline_id):
         """ deleteInlineServiceChain :
         Remove an existing inline service chain from the system.
-
         Sample usage:
         >>> nto.deleteInlineServiceChain('121')
         b''
@@ -3250,7 +3000,6 @@ class VisionWebApi(object):
     def getInlineServiceChain(self, inline_id):
         """ getInlineServiceChain :
         Fetch the properties of a inline service chain object.
-
         Sample usage:
         >>> nto.getInlineServiceChain('126')
         {'bypass_connector_list': [120], 'connect_access_settings': {'groups': [], 'policy': 'INHERITED'}, 'created': {'caused_by': 'admin', 'details': None, 'time': 1605732093043, 'type': 'CREATE'}, 'criteria': {'logical_operation': 'AND', 'vlan': [{'priority': None, 'vlan_id': '100'}]}, 'default_name': 'SC1', 'description': None, 'direction': 'BIDI', 'filter_list': [127, 128, 129, 130], 'filter_mode': 'PASS_BY_CRITERIA', 'history': [{'caused_by': 'admin', 'details': None, 'props': ['INLINE_TOOL_RESOURCE_MAP'], 'time': 1605732093110, 'type': 'MODIFY'}], 'id': 126, 'misc': {'access_map': {'CONNECT_ACCESS_SETTINGS': {'access_settings': {'groups': [], 'policy': 'INHERITED'}, 'affecting_ports': {'12': 'Allow All', '13': 'Allow All'}, 'affecting_resource': {}, 'current_value': 'All users. Derived from *BPP1: Inherited *P10 (in BPP1), P11 (in BPP1): Allow All', 'expression_text': 'All users.', 'operation_name': 'Connect Bypass Port Pairs', 'operation_phrase': 'connect bypass port pairs to', 'tooltip': 'Inherit from BPPs', 'user_names': '', 'users_statement': 'Anyone can perform'}, 'MODIFY_ACCESS_SETTINGS': {'access_settings': {'groups': [], 'policy': 'INHERITED'}, 'affecting_ports': {'12': 'Allow All', '13': 'Allow All'}, 'affecting_resource': {}, 'current_value': 'All users. Derived from *BPP1: Inherited *P10 (in BPP1), P11 (in BPP1): Allow All', 'expression_text': 'All users.', 'operation_name': 'Modify', 'operation_phrase': 'modify', 'tooltip': 'Inherit from BPPs', 'user_names': '', 'users_statement': 'Anyone can perform'}}, 'access_props': ['MODIFY_ACCESS_SETTINGS', 'CONNECT_ACCESS_SETTINGS'], 'warning': None}, 'mod_count': 1, 'modify_access_settings': {'groups': [], 'policy': 'INHERITED'}, 'name': 'Secure SC Python', 'tool_resource_map': [{'tool_resource_failure_action': 'FAIL_CLOSED', 'tool_resource_id': '114'}], 'tool_sharing_enable': False, 'vlan_translation_enabled': False}
@@ -3260,7 +3009,6 @@ class VisionWebApi(object):
     def getAllInlineServiceChains(self):
         """ getAllInlineServiceChains :
         Fetch a list containing the summaries for all the inline service chains in the system.
-
         Sample usage:
         >>> nto.getAllInlineServiceChains()
         [{'id': 126, 'name': 'Secure SC Python'}]
@@ -3270,7 +3018,6 @@ class VisionWebApi(object):
     def searchInlineServiceChains(self, args):
         """ searchInlineServiceChains :
         Search for a specific inline service chain in the system by certain properties.
-
         Sample usage:
         >>> nto.searchInlineServiceChains({"direction": "BIDI"})
         [{'bypass_connector_list': [120], 'connect_access_settings': {'groups': [], 'policy': 'INHERITED'}, 'created': {'caused_by': 'admin', 'details': None, 'time': 1605732093043, 'type': 'CREATE'}, 'criteria': {'logical_operation': 'AND', 'vlan': [{'priority': None, 'vlan_id': '100'}]}, 'default_name': 'SC1', 'description': None, 'direction': 'BIDI', 'filter_list': [127, 128, 129, 130], 'filter_mode': 'PASS_BY_CRITERIA', 'history': [{'caused_by': 'admin', 'details': None, 'props': ['INLINE_TOOL_RESOURCE_MAP'], 'time': 1605732093110, 'type': 'MODIFY'}], 'id': 126, 'misc': {'access_map': {'CONNECT_ACCESS_SETTINGS': {'access_settings': {'groups': [], 'policy': 'INHERITED'}, 'affecting_ports': {'12': 'Allow All', '13': 'Allow All'}, 'affecting_resource': {}, 'current_value': 'All users. Derived from *BPP1: Inherited *P10 (in BPP1), P11 (in BPP1): Allow All', 'expression_text': 'All users.', 'operation_name': 'Connect Bypass Port Pairs', 'operation_phrase': 'connect bypass port pairs to', 'tooltip': 'Inherit from BPPs', 'user_names': '', 'users_statement': 'Anyone can perform'}, 'MODIFY_ACCESS_SETTINGS': {'access_settings': {'groups': [], 'policy': 'INHERITED'}, 'affecting_ports': {'12': 'Allow All', '13': 'Allow All'}, 'affecting_resource': {}, 'current_value': 'All users. Derived from *BPP1: Inherited *P10 (in BPP1), P11 (in BPP1): Allow All', 'expression_text': 'All users.', 'operation_name': 'Modify', 'operation_phrase': 'modify', 'tooltip': 'Inherit from BPPs', 'user_names': '', 'users_statement': 'Anyone can perform'}}, 'access_props': ['MODIFY_ACCESS_SETTINGS', 'CONNECT_ACCESS_SETTINGS'], 'warning': None}, 'mod_count': 1, 'modify_access_settings': {'groups': [], 'policy': 'INHERITED'}, 'name': 'Secure SC Python', 'tool_resource_map': [{'tool_resource_failure_action': 'FAIL_CLOSED', 'tool_resource_id': '114'}], 'tool_sharing_enable': False, 'vlan_translation_enabled': False}]
@@ -3280,7 +3027,6 @@ class VisionWebApi(object):
     def modifyInlineServiceChain(self, inline_id, args):
         """ modifyInlineServiceChain:
         Update the properties of an existing inline service chain.
-
         Sample usage:
         >>> nto.modifyInlineServiceChain('126', {"description": "Chain Descr"})
         b''
@@ -3293,7 +3039,6 @@ class VisionWebApi(object):
     def getKubernetesNode(self, kubernetes_nodes_id):
         """ getKubernetesNode :
         Fetch the properties of a kubernetes node object.
-
         Sample usage:
         """
         return self._sendRequest('GET', '/api/kubernetes_nodes/' + kubernetes_nodes_id)
@@ -3301,7 +3046,6 @@ class VisionWebApi(object):
     def getAllKubernetesNodes(self):
         """ getAllKubernetesNodes :
         Fetch a list containing the summaries for all the kubernetes nodes in the system.
-
         Sample usage:
         """
         return self._sendRequest('GET', '/api/kubernetes_nodes')
@@ -3309,7 +3053,6 @@ class VisionWebApi(object):
     def resetFactoryDefaultKubernetesNode(self, kubernetes_nodes_id):
         """ resetFactoryDefaultKubernetesNode :
         Reset to factory default a specific kubernetes node from the Mako card.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/kubernetes_nodes/' + kubernetes_nodes_id + '/reset_factory', args, False)
@@ -3320,7 +3063,6 @@ class VisionWebApi(object):
     def getAllLineBoards(self):
         """ getAllLineBoards :
         Fetch a list containing the summaries for all the line boards in the system.
-
         Sample usage:
         >>> nto.getAllLineBoards()
         [{u'id': 471, u'name': u'LC6'}, {u'id': 476, u'name': u'LC1'}, {u'id': 474, u'name': u'LC5'}, {u'id': 475, u'name': u'LC3'}, {u'id': 472, u'name': u'LC2'}, {u'id': 473, u'name': u'LC4'}]
@@ -3330,7 +3072,6 @@ class VisionWebApi(object):
     def getLineBoard(self, line_board):
         """ getLineBoard :
         Fetch the properties of a line board.
-
         Sample usage:
         >>> nto.getLineBoard('LC6')
         {u'name': u'LC6', u'qsfp_card_mode': u'MODE_QSFP', u'default_name': u'LC6', u'mod_count': 9, u'modify_access_settings': {u'policy': u'ALLOW_ALL', u'groups': []}, u'id': 471}
@@ -3340,7 +3081,6 @@ class VisionWebApi(object):
     def searchLineBoard(self, args):
         """ searchLineBoard :
         Search for a specific capture in the system by certain properties.
-
         Sample usage:
         >>> nto.searchLineBoard({'name': 'LC6'})
         [{u'id': 471, u'name': u'LC6'}]
@@ -3350,7 +3090,6 @@ class VisionWebApi(object):
     def switchModeLineBoard(self, line_board):
         """ switchModeLineBoard :
         Switches the card mode to QSFP if in SFP mode and to SFP if in QSFP mode.
-
         Sample usage:
         >>> nto.switchModeLineBoard('LC6')
         ''
@@ -3361,7 +3100,6 @@ class VisionWebApi(object):
     def modifyLineBoard(self, line_board, args):
         """ modifyLineBoard :
         Update the properties of an existing line board.
-
         Sample usage:
         >>> nto.modifyLineBoard('LC6', {'name' : 'Test LC'})
         ''
@@ -3374,7 +3112,6 @@ class VisionWebApi(object):
     def getAllMonitors(self):
         """ getAllMonitors :
         Fetch a list containing the summaries for all the monitors in the system.
-
         Sample usage:
         >>> nto.getAllMonitors()
         [{u'id': 572, u'name': u'Low Traffic'}]
@@ -3385,7 +3122,6 @@ class VisionWebApi(object):
         """ getMonitor :
         Fetch the properties of a monitor object which is specified by its
         monitor_id_or_name.
-
         Sample usage:
         >>> nto.getMonitor('572')
         {u'description': None, u'created': {u'type': u'CREATE', u'caused_by': u'admin', u'details': None, u'time': 1442432114344}, u'actions': [{u'min_interval': {u'value': 15, u'unit': u'SEC'}, u'type': u'TRAP', u'enabled': True}], u'name': u'Low Traffic', u'mod_count': 0, u'trigger': {u'stat': u'NP_CURRENT_RX_UTILIZATION', u'window_size': 1, u'window_count': 1, u'down_threshold_enabled': True, u'up_threshold': 99, u'up_threshold_enabled': False, u'down_threshold': 10, u'type': u'PERCENT_STAT', u'ports': [58]}, u'id': 572, u'history': []}
@@ -3395,7 +3131,6 @@ class VisionWebApi(object):
     def createMonitor(self, args):
         """ createMonitor :
         Create a new monitor.
-
         Sample usage:
         >>> nto.createMonitor({'actions': [{'min_interval': {'value': 15, 'unit': 'SEC'}, 'type': 'TRAP', 'enabled': True}], 'name': 'Drop Packets', 'trigger': {'stat': 'TP_TOTAL_DROP_COUNT_PACKETS', 'window_size': 1, 'min_change': 10, 'window_count': 1, 'type': 'COUNT_STAT', 'ports': [59]}})
         '{"id": "574"}'
@@ -3405,7 +3140,6 @@ class VisionWebApi(object):
     def modifyMonitor(self, monitor_id, args):
         """ modifyMonitor :
         Update properties of a monitor.
-
         Sample usage:
         >>> nto.modifyMonitor('574', {'trigger': {'stat': 'TP_TOTAL_DROP_COUNT_PACKETS', 'window_size': 1, 'min_change': 20, 'window_count': 1, 'type': 'COUNT_STAT', 'ports': [59]}})
         ''
@@ -3415,7 +3149,6 @@ class VisionWebApi(object):
     def searchMonitors(self, args):
         """ searchMonitors :
         Search for a specific port group in the system by certain properties.
-
         Sample usage:
         >>> nto.searchMonitors({'name': 'Drop Packets'})
         [{u'id': 574, u'name': u'Drop Packets'}]
@@ -3425,7 +3158,6 @@ class VisionWebApi(object):
     def deleteMonitor(self, monitor_id):
         """ deleteMonitor :
         Remove a monitor from the system. The monitor is specified by a monitor_id_or_name.
-
         Sample usage:
         >>> nto.deleteMonitor('572')
         ''
@@ -3438,7 +3170,6 @@ class VisionWebApi(object):
     def createNetserviceInstance(self, args):
         """ createNetserviceInstance :
         Create a new netservice instance in the system.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/netservice_instances', args)
@@ -3446,7 +3177,6 @@ class VisionWebApi(object):
     def deleteNetserviceInstance(self, netservive_id):
         """ deleteNetserviceInstance :
         Remove an existing netservice instance from the system.
-
         Sample usage:
         """
         return self._sendRequest('DELETE', '/api/netservice_instances/' + netservive_id, None, False)
@@ -3455,7 +3185,6 @@ class VisionWebApi(object):
         """ deployNetserviceInstance :
         Deployes a specific netservice instance in the system.
         This method is allowed only on the following models: 8000.
-
         Sample usage:
         """
         return self._sendRequest('PUT', '/api/netservice_instances/' + netservive_id + '/deploy', None, False)
@@ -3464,7 +3193,6 @@ class VisionWebApi(object):
         """ drainNetserviceInstance :
         Drains a specific netservice instance in the system.
         This method is allowed only on the following models: 8000.
-
         Sample usage:
         """
         return self._sendRequest('PUT', '/api/netservice_instances/' + netservive_id + '/drain', None, False)
@@ -3472,7 +3200,6 @@ class VisionWebApi(object):
     def getNetserviceInstance(self, netservice_id):
         """ getNetserviceInstance :
         Fetch the properties of a netservice instance object.
-
         Sample usage:
         """
         return self._sendRequest('GET', '/api/netservice_instances/' + netservice_id)
@@ -3481,7 +3208,6 @@ class VisionWebApi(object):
         """ getAllNetserviceInstancesType :
         Fetch a list containing the available resources for specified deployment type in the system.
         This method is allowed only on the following models: 8000.
-
         Sample usage:
         """
         return self._sendRequest('GET', '/api/netservice_instances/' + netservive_type + '/list_available_resources', None)
@@ -3489,7 +3215,6 @@ class VisionWebApi(object):
     def getAllNetserviceInstances(self):
         """ getAllNetserviceInstances :
         Fetch a list containing the summaries for all the netservice instances in the system.
-
         Sample usage:
         """
         return self._sendRequest('GET', '/api/netservice_instances')
@@ -3498,7 +3223,6 @@ class VisionWebApi(object):
         """ restartNetserviceInstance :
         Restarts a specific netservice instance in the system.
         This method is allowed only on the following models: 8000.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/netservice_instances/' + netservive_id + '/restart', None, False)
@@ -3506,7 +3230,6 @@ class VisionWebApi(object):
     def searchNetserviceInstance(self, args):
         """ searchNetserviceInstance :
         Search for a specific netservice instance in the system by certain properties.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/netservice_instances/search', args)
@@ -3514,7 +3237,6 @@ class VisionWebApi(object):
     def modifyNetserviceInstance(self, netservive_id, args):
         """ modifyNetserviceInstance :
         Update the properties of an existing netservice instance.
-
         Sample usage:
         """
         return self._sendRequest('PUT', '/api/netservice_instances/' + netservive_id, args, False)
@@ -3525,28 +3247,29 @@ class VisionWebApi(object):
     def getAllPortGroups(self):
         """ getAllPortGroups :
         Fetch a list containing the summaries for all the port groups in the system.
-
         Sample usage:
         >>> nto.getAllPortGroups()
         [{u'id': 202, u'name': u'PGF27'}, {u'id': 203, u'name': u'PGF31'}, {u'id': 204, u'name': u'PGF30'}, {u'id': 205, u'name': u'PGF29'}, {u'id': 206, u'name': u'PGF28'}, {u'id': 251, u'name': u'PGF1'}, {u'id': 252, u'name': u'PGF2'}, {u'id': 253, u'name': u'PGF3'}, {u'id': 254, u'name': u'PGF4'}, {u'id': 255, u'name': u'PGF5'}, {u'id': 288, u'name': u'PGF6'}, {u'id': 289, u'name': u'PGF7'}, {u'id': 290, u'name': u'PGF8'}, {u'id': 291, u'name': u'PGF9'}, {u'id': 292, u'name': u'PGF10'}, {u'id': 325, u'name': u'PGF11'}, {u'id': 326, u'name': u'PGF12'}, {u'id': 327, u'name': u'PGF13'}, {u'id': 328, u'name': u'PGF14'}, {u'id': 329, u'name': u'PGF15'}, {u'id': 362, u'name': u'PGF16'}, {u'id': 363, u'name': u'PGF17'}, {u'id': 364, u'name': u'PGF18'}, {u'id': 365, u'name': u'PGF19'}, {u'id': 366, u'name': u'PGF20'}, {u'id': 399, u'name': u'PGF21'}, {u'id': 400, u'name': u'PGF22'}, {u'id': 401, u'name': u'PGF23'}, {u'id': 402, u'name': u'PGF24'}, {u'id': 403, u'name': u'PGF25'}, {u'id': 404, u'name': u'PG1'}]
         """
         return self._sendRequest('GET', '/api/port_groups')
 
-    def getPortGroup(self, port_group):
+    def getPortGroup(self, port_group, properties=None):
         """ getPortGroup :
         Fetch the properties of a port group object which is specified by its
         port_group_id_or_name.
-
         Sample usage:
         >>> nto.getPortGroup('404')
         {u'trim_settings': None, u'supports_timestamp': False, u'dedup_settings': None, u'vntag_strip_settings': None, u'vxlan_strip_settings': None, u'failover_mode': u'REBALANCE', u'keywords': [], u'supports_dedup': False, u'id': 404, u'fabric_path_strip_settings': None, u'supports_vntag_strip': False, u'has_dropped_packets': False, u'filtering_direction': u'INGRESS', u'supports_trailer_strip': False, u'icon_type': u'INTERCONNECT', u'last_filter_order_event': None, u'supports_mpls_strip': False, u'enabled_status': u'ENABLED', u'supports_burst_buffer': False, u'custom_icon_id': None, u'trailer_strip_settings': None, u'mpls_strip_settings': None, u'type': u'INTERCONNECT', u'tx_light_status': u'ON', u'filter_criteria': {u'logical_operation': u'AND'}, u'supports_std_vlan_strip': True, u'pause_frames_status': u'IGNORE', u'dest_filter_list': [], u'description': None, u'snmp_tag': None, u'l2gre_strip_settings': None, u'gtp_strip_settings': None, u'burst_buffer_settings': None, u'force_link_up': u'NOT_SUPPORTED', u'supports_trim': False, u'supports_gtp_strip': False, u'port_list': [58], u'supports_vxlan_strip': False, u'name': u'PG1', u'supports_l2gre_strip': False, u'supports_fabric_path_strip': False, u'link_status': {u'speed': 0, u'link_up': False}, u'interconnect_info': {u'addr': u'0.0.0.0', u'port_group': None}, u'created': {u'type': u'CREATE', u'caused_by': u'admin', u'details': None, u'time': 1442434236579}, u'default_name': u'PG1', u'supports_erspan_strip': False, u'mod_count': 1, u'timestamp_settings': None, u'erspan_strip_settings': None, u'mode': u'NETWORK', u'source_filter_list': [], u'filter_mode': u'PASS_ALL', u'std_vlan_strip_settings': {u'ingress_count': 0, u'egress_count': 0, u'enabled': False, u'strip_mode': None}, u'history': [{u'type': u'MODIFY', u'time': 1442434236579, u'caused_by': u'admin', u'details': None, u'props': [u'PORT_LIST']}]}
         """
-        return self._sendRequest('GET', '/api/port_groups/' + port_group)
+        query = ""
+        if properties:
+            query = '?properties=' + ''.join(properties.split())
+
+        return self._sendRequest('GET', '/api/port_groups/' + port_group + query)
 
     def createPortGroup(self, args):
         """ createPortGroup :
         Create a new port group.
-
         Sample usage:
         >>> nto.createPortGroup({'mode': 'NETWORK', 'type': 'INTERCONNECT', 'port_list': [59,60]})
         {u'id': u'405'}
@@ -3556,7 +3279,6 @@ class VisionWebApi(object):
     def modifyPortGroup(self, port_group_id, args):
         """ modifyPortGroup :
         Update properties of a port group.
-
         Sample usage:
         >>> nto.modifyPortGroup('PG2', {'port_list': [59,60,61,62]})
         ''
@@ -3566,7 +3288,6 @@ class VisionWebApi(object):
     def searchPortGroups(self, args):
         """ searchPortGroups :
         Search for a specific port group in the system by certain properties.
-
         Sample usage:
         >>> nto.searchPortGroups({'enabled_status' : 'DISABLED'})
         [{u'id': 404, u'name': u'PG1'}]
@@ -3576,7 +3297,6 @@ class VisionWebApi(object):
     def deletePortGroup(self, port_group_id):
         """ deletePortGroup :
         Remove a port group from the system. The port group is specified by a port_group_id_or_name.
-
         Sample usage:
         >>> nto.deletePortGroup('PG2')
         ''
@@ -3586,7 +3306,6 @@ class VisionWebApi(object):
     def disablePortGroup(self, port_group_id):
         """ disablePortGroup :
         Disables a port group by disabling all the contained ports.
-
         Sample usage:
         """
         return self._sendRequest('PUT', '/api/port_groups/' + port_group_id + '/disable', None, False)
@@ -3594,7 +3313,6 @@ class VisionWebApi(object):
     def enablePortGroup(self, port_group_id):
         """ enablePortGroup :
         Enables a port group by enabling all the contained ports.
-
         Sample usage:
         """
         return self._sendRequest('PUT', '/api/port_groups/' + port_group_id + '/enable', None, False)
@@ -3603,27 +3321,63 @@ class VisionWebApi(object):
         """ getPortGroupProperty :
         Fetch a property of a port group object which is specified by its
         port_id_or_name.
-
         Sample usage:
         >>> nto.getPortGroupProperty('PG1', 'keywords')
         [u'TIME']
         """
-        return self._sendRequest('GET', '/api/port_groups/' + port_group + '?properties=' + property)[property]
+        return self.getPortGroup(port_group, property)[property]
+        #return self._sendRequest('GET', '/api/port_groups/' + port_group + '?properties=' + property)[property]
 
     def getPortGroupProperties(self, port_group, properties):
         """ getPortGroupProperties :
         Fetch one or more properties of a port group object which is specified by its
         port_group_id_or_name.
-
         Sample usage:
         >>> nto.getPortGroupProperties('50', 'keywords,link_status,default_name,enabled,filter_mode')
         {u'filter_mode': u'DISABLE', u'keywords': [], u'default_name': u'PG1', u'enabled': None, u'link_status': {u'speed': 10000, u'link_up': True}}
         """
-        return self._sendRequest('GET', '/api/port_groups/' + port_group + '?properties=' + properties)
+        return self.getPortGroup(port_group, properties)
+        #return self._sendRequest('GET', '/api/port_groups/' + port_group + '?properties=' + properties)
 
     ###################################################
     # Ports
     ###################################################
+    def clearPort(self, port):
+        """ clearPort :
+        Clears a port to default configuration. No properties are required in the HTTP Body.
+
+        Sample usage:
+        >>> nto.clearPort('P1-01')
+        b''
+        """
+        return self._sendRequest('PUT', '/api/ports/' + port + '/clear', None, False)
+
+    def createPort(self, args):
+        """ createPort :
+        Create a new port on the system. This can be used only to create
+        virtual ports for GRE origination.
+
+        Sample usage:
+        >>> nto.createPort({'parent_port_id': 16, 'type': 'VIRTUAL_PORT', 'netstack_tunnel_origination_remote_settings': {'enable_arp': True, 'remote_ip_address': '10.0.1.3'}})
+        {'default_name': 'P01-T01', 'id': 100, 'name': 'P01-T01'}
+        >>> nto.modifyPort('P01', {'netstack_tunnel_origination_local_settings': {'enabled': True, 'l2gre_key': 1, 'vnid': None}})
+        b''
+        """
+        return self._sendRequest('POST', '/api/ports', args)
+
+    def deletePort(self, port):
+        """ deletePort :
+        Remove a port from the system. This can be used only to remove
+        virtual ports for GRE origination.
+
+        Sample usage:
+        >>> nto.modifyPort('P01', {'netstack_tunnel_origination_local_settings': {'enabled': False}})
+        b''
+        >>> nto.deletePort('P01-T01')
+        b''
+        """
+        return self._sendRequest('DELETE', '/api/ports/' + port, None, False)
+
     def getAllPorts(self):
         """ getAllPorts :
         Fetch a list containing summaries for all the ports in the system.
@@ -3634,7 +3388,7 @@ class VisionWebApi(object):
         """
         return self._sendRequest('GET', '/api/ports')
 
-    def getPort(self, port):
+    def getPort(self, port, properties=None):
         """ getPort :
         Fetch the properties of a port object which is specified by its
         port_id_or_name.
@@ -3643,12 +3397,15 @@ class VisionWebApi(object):
         >>> nto.getPort('58')
         {u'trim_settings': None, u'supports_timestamp': False, u'dedup_settings': None, u'filter_criteria': {u'logical_operation': u'AND'}, u'vntag_strip_settings': None, u'std_port_tagging_settings': {u'enabled': False, u'vlan_id': 101}, u'link_up_down_trap_enabled': True, u'filter_match_count_unit': u'PACKETS', u'gtp_fd_settings': None, u'keywords': [u'LC1'], u'tunnel_termination_settings': {u'ip_version': 4, u'dest_ip_addr': None, u'enabled': False, u'empty_erspan_header': False, u'tunnel_protocol': None}, u'supports_dedup': False, u'id': 58, u'fabric_path_strip_settings': None, u'supports_vxlan_strip': False, u'port_group_id': None, u'mpls_strip_settings': None, u'max_licensed_speed': u'40G', u'supports_vntag_strip': False, u'has_dropped_packets': False, u'filtering_direction': u'INGRESS', u'supports_trailer_strip': False, u'tunnel_mac': None, u'supports_tunnel_termination': False, u'supports_mpls_strip': False, u'copper_link_polling': False, u'last_filter_order_event': None, u'vxlan_strip_settings': None, u'supports_burst_buffer': False, u'custom_icon_id': None, u'trailer_strip_settings': None, u'media_type': u'QSFP_PLUS_40G', u'expiration_time': 1449727199651, u'modify_access_settings': {u'policy': u'ALLOW_ALL', u'groups': []}, u'type': u'QSFP_PLUS', u'link_settings': u'40G_FULL', u'tx_light_status': u'ON', u'connect_in_access_settings': {u'policy': u'ALLOW_ALL', u'groups': []}, u'supports_std_vlan_strip': True, u'dest_filter_list': [], u'description': None, u'snmp_tag': None, u'l2gre_strip_settings': None, u'gtp_strip_settings': None, u'burst_buffer_settings': None, u'force_link_up': u'NOT_SUPPORTED', u'supports_trim': False, u'supports_gtp_strip': False, u'license_status': u'VALID', u'resource_access_settings': {u'policy': u'ALLOW_ALL', u'groups': []}, u'supports_std_port_tagging': True, u'remote_fabric_port': None, u'connect_out_access_settings': {u'policy': u'ALLOW_ALL', u'groups': []}, u'name': u'P1-01', u'supports_l2gre_strip': False, u'supports_fabric_path_strip': False, u'ignore_pause_frames': True, u'link_status': {u'duplex': u'UNKNOWN', u'pause': u'UNKNOWN', u'speed': u'N/A', u'link_up': False}, u'icon_type': u'QSFP_PLUS', u'default_name': u'P1-01', u'enabled': False, u'supports_erspan_strip': False, u'mod_count': 21, u'timestamp_settings': None, u'erspan_strip_settings': None, u'mode': u'NETWORK', u'supports_gtp_flow_distribution': False, u'source_filter_list': [], u'filter_mode': u'PASS_ALL', u'std_vlan_strip_settings': {u'ingress_count': 0, u'egress_count': 0, u'enabled': False, u'strip_mode': None}, u'history': []}
         """
-        return self._sendRequest('GET', '/api/ports/' + port)
+        query = ""
+        if properties:
+            query = '?properties=' + ''.join(properties.split())
+            
+        return self._sendRequest('GET', '/api/ports/' + port + query)
 
     def modifyPort(self, port_id, args):
         """ modifyPort :
         Update the properties of a port.
-
         Sample usage:
         >>> nto.modifyPort('58', {'mode': 'TOOL'})
         ''
@@ -3658,34 +3415,43 @@ class VisionWebApi(object):
     def searchPorts(self, args):
         """ searchPorts :
         Search for a specific port in the system by certain properties.
-
         Sample usage:
         >>> nto.searchPorts({'mode': 'TOOL'})
         [{u'id': 58, u'name': u'P1-01'}]
         """
         return self._sendRequest('POST', '/api/ports/search', args)
 
-    def getPortProperties(self, port, properties):
-        """ getPortProperties :
-        Fetch one or more properties of a port object which is specified by its
-        port_id_or_name.
-
+    def getPortTransceiverInfo(self, port_id):
+        """ getPortTransceiverInfo :
+        Fetch the transceiver information of a port object which is specified by its
+        port_id_or_nam
         Sample usage:
-        >>> nto.getPortProperties('PB07', 'enabled,link_status')
-        {u'enabled': True, u'link_status': {u'duplex': u'FULL', u'pause': u'DISABLED', u'speed': u'10G', u'link_up': True}}
-        """
-        return self._sendRequest('GET', '/api/ports/' + port + '?properties=' + properties)
+
+        >>> nto.getPortTransceiverInfo('P03')
+        {'lanes': 1, 'port_default_name': 'P03', 'port_id': '18', 'port_name': 'P03', 'transceiver_info': [{'cable': 'N/A', 'compliance': '100G AOC or 25GAUI C2M AOC', 'connector': 'No separable connector', 'diag_calibration': 'Not Applicable', 'identifier': 'QSFP28', 'length_comment': 'OM4 50um', 'length_mode': 'Unspecified', 'max_length': '6 meters', 'present': 'true', 'rx_input_power1': '1.3392', 'rx_input_power1_dbm': '1.27', 'rx_input_power2': '1.3545', 'rx_input_power2_dbm': '1.32', 'rx_input_power3': '1.3764', 'rx_input_power3_dbm': '1.39', 'rx_input_power4': '1.352', 'rx_input_power4_dbm': '1.31', 'rx_input_power_high_alert_threshold': '3.4673', 'rx_input_power_high_alert_threshold_dbm': '5.40', 'rx_input_power_high_warning_threshold': '1.7378', 'rx_input_power_high_warning_threshold_dbm': '2.40', 'rx_input_power_low_alert_threshold': '0.0467', 'rx_input_power_low_alert_threshold_dbm': '-13.31', 'rx_input_power_low_warning_threshold': '0.0933', 'rx_input_power_low_warning_threshold_dbm': '-10.30', 'rx_input_power_status1': 'Normal', 'rx_input_power_status2': 'Normal', 'rx_input_power_status3': 'Normal', 'rx_input_power_status4': 'Normal', 'temperature': '35', 'temperature_high_alert_threshold': '80', 'temperature_high_warning_threshold': '70', 'temperature_low_alert_threshold': '-10', 'temperature_low_warning_threshold': '0', 'temperature_status': 'Normal', 'tx_bias1': '6.75', 'tx_bias2': '6.75', 'tx_bias3': '6.75', 'tx_bias4': '6.75', 'tx_bias_high_alert_threshold': '8.5', 'tx_bias_high_warning_threshold': '8.0', 'tx_bias_low_alert_threshold': '5.492', 'tx_bias_low_warning_threshold': '6.0', 'tx_bias_status1': 'Normal', 'tx_bias_status2': 'Normal', 'tx_bias_status3': 'Normal', 'tx_bias_status4': 'Normal', 'tx_output_power1': '1.6412', 'tx_output_power1_dbm': '2.15', 'tx_output_power2': '1.6222', 'tx_output_power2_dbm': '2.10', 'tx_output_power3': '1.5521', 'tx_output_power3_dbm': '1.91', 'tx_output_power4': '1.5447', 'tx_output_power4_dbm': '1.89', 'tx_output_power_high_alert_threshold': '3.4673', 'tx_output_power_high_alert_threshold_dbm': '5.40', 'tx_output_power_high_warning_threshold': '1.7378', 'tx_output_power_high_warning_threshold_dbm': '2.40', 'tx_output_power_low_alert_threshold': '0.0724', 'tx_output_power_low_alert_threshold_dbm': '-11.40', 'tx_output_power_low_warning_threshold': '0.1445', 'tx_output_power_low_warning_threshold_dbm': '-8.40', 'tx_output_power_status1': 'Normal', 'tx_output_power_status2': 'Normal', 'tx_output_power_status3': 'Normal', 'tx_output_power_status4': 'Normal', 'vendor_date_code': '05-07-2018', 'vendor_lot_code': '  ', 'vendor_name': 'Mellanox', 'vendor_oui': '0002c9', 'vendor_part_number': 'MFA1A00-C003', 'vendor_rev': 'B1', 'vendor_serial_number': 'MT1823FT00529', 'voltage': '3.2691', 'voltage_high_alert_threshold': '3.5', 'voltage_high_warning_threshold': '3.465', 'voltage_low_alert_threshold': '3.1', 'voltage_low_warning_threshold': '3.135', 'voltage_status': 'Normal', 'wavelength': '8500'}]}        """
+        return self._sendRequest('GET', '/api/ports/' + port_id + '/transceiver_info', None)
 
     def getPortProperty(self, port, property):
         """ getPortProperty :
         Fetch a property of a port object which is specified by its
         port_id_or_name.
-
         Sample usage:
         >>> nto.getPortProperty('PB07', 'enabled')
         {u'enabled': True}
         """
-        return self._sendRequest('GET', '/api/ports/' + port + '?properties=' + property)[property]
+        return self.getPort(port, property)[property]
+        #return self._sendRequest('GET', '/api/ports/' + port + '?properties=' + property)[property]
+
+    def getPortProperties(self, port, properties):
+        """ getPortProperties :
+        Fetch one or more properties of a port object which is specified by its
+        port_id_or_name.
+        Sample usage:
+        >>> nto.getPortProperties('PB07', 'enabled,link_status')
+        {u'enabled': True, u'link_status': {u'duplex': u'FULL', u'pause': u'DISABLED', u'speed': u'10G', u'link_up': True}}
+        """
+        return self.getPort(port, properties)
+        #return self._sendRequest('GET', '/api/ports/' + port + '?properties=' + properties)
 
     ###################################################
     # RTP Correlator Resources
@@ -3693,7 +3459,6 @@ class VisionWebApi(object):
     def disableRtp(self, rtp_id, args):
         """ disableRtp :
         Disables an RTP resource by disconnecting the attached filter.
-
         Sample usage:
         """
         return self._sendRequest('PUT', '/api/rtp_correlator_resources/' + rtp_id + '/disable', args, False)
@@ -3701,7 +3466,6 @@ class VisionWebApi(object):
     def enableRtp(self, rtp_id, args):
         """ enableRtp :
         Enables an RTP resource by attaching a filter to it.
-
         Sample usage:
         """
         return self._sendRequest('PUT', '/api/rtp_correlator_resources/' + rtp_id + '/enable', args, False)
@@ -3709,7 +3473,6 @@ class VisionWebApi(object):
     def getRtp(self, rtp_id):
         """ getRtp :
         Fetch the properties of a RTP Correlator resource object.
-
         Sample usage:
         """
         return self._sendRequest('GET', '/api/rtp_correlator_resources/' + rtp_id)
@@ -3717,7 +3480,6 @@ class VisionWebApi(object):
     def getAllRtps(self):
         """ getAllRtps :
         Fetch a list containing the summaries for all the RTP Correlator resources in the system.
-
         Sample usage:
         """
         return self._sendRequest('GET', '/api/rtp_correlator_resources')
@@ -3725,7 +3487,6 @@ class VisionWebApi(object):
     def searchRtp(self, args):
         """ searchRtp :
         Search for a specific RTP Correlator resource in the system by certain properties.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/rtp_correlator_resources/search', args)
@@ -3733,7 +3494,6 @@ class VisionWebApi(object):
     def modifyRtp(self, rtp_id, args):
         """ modifyRtp :
         Update the properties of an existing RTP Correlator resource.
-
         Sample usage:
         """
         return self._sendRequest('PUT', '/api/rtp_correlator_resources/' + rtp_id, args, False)
@@ -3744,7 +3504,6 @@ class VisionWebApi(object):
     def addSipWhiteListEntries(self, sip_id, args):
         """ addSipWhiteListEntries :
         Adds the entries sent in the 'whitelist' parameter as an array of Strings.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/sip_correlator_resources/' + sip_id + '/whiteList', args, False)
@@ -3752,7 +3511,6 @@ class VisionWebApi(object):
     def clearSipWhiteList(self, sip_id):
         """ clearSipWhiteList :
         Delete all the White List entries.
-
         Sample usage:
         """
         args = {}
@@ -3761,7 +3519,6 @@ class VisionWebApi(object):
     def deleteSipWhiteListEntries(self, sip_id, args):
         """ deleteSipWhiteListEntries :
         Deletes the entries sent in the 'whitelist' parameter as an array of Strings.
-
         Sample usage:
         """
         return self._sendRequest('DELETE', '/api/sip_correlator_resources/' + sip_id + '/whiteList', args, False)
@@ -3769,7 +3526,6 @@ class VisionWebApi(object):
     def disableSip(self, sip_id, args):
         """ disableSip :
         Detaches an SIP resource by disconnecting from the attached filter.
-
         Sample usage:
         """
         return self._sendRequest('PUT', '/api/sip_correlator_resources/' + sip_id + '/disable', args, False)
@@ -3777,7 +3533,6 @@ class VisionWebApi(object):
     def enableRtp(self, sip_id, args):
         """ enableRtp :
         Enables an RTP resource by attaching a filter to it.
-
         Sample usage:
         """
         return self._sendRequest('PUT', '/api/sip_correlator_resources/' + sip_id + '/enable', args, False)
@@ -3785,7 +3540,6 @@ class VisionWebApi(object):
     def exportSipWhiteListEntries(self, sip_id):
         """ exportSipWhiteListEntries :
         Exports WhiteList entries to a CSV. Each one will be on a separate line.
-
         Sample usage:
         """
         args = {}
@@ -3794,7 +3548,6 @@ class VisionWebApi(object):
     def getSip(self, sip_id):
         """ getSip :
         Fetch the properties of a SIP Correlator resource object.
-
         Sample usage:
         """
         return self._sendRequest('GET', '/api/sip_correlator_resources/' + sip_id)
@@ -3802,7 +3555,6 @@ class VisionWebApi(object):
     def importSipWhiteListEntries(self, sip_id, args):
         """ import_cfg :
         Imports White List entries from CSV. Each one should be on a separate line.
-
         Sample usage:
         """
 
@@ -3845,7 +3597,6 @@ class VisionWebApi(object):
     def getAllSips(self):
         """ getAllSips :
         Fetch a list containing the summaries for all the SIP Correlator resources in the system.
-
         Sample usage:
         """
         return self._sendRequest('GET', '/api/sip_correlator_resources')
@@ -3854,7 +3605,6 @@ class VisionWebApi(object):
         """ retrieveSipWhitelistChunk :
         Retrieve a White List chunk using the 'start' parameter as the starting index. If that
         value exceeds the size of the White List, an empty array will be returned.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/sip_correlator_resources/' + sip_id + '/chunk', args, False)
@@ -3864,7 +3614,6 @@ class VisionWebApi(object):
         Retrieve a White List chunk using the 'start' parameter as the starting index and
         the 'filter' parameter as a RegExp pattern to filter the entries. If the 'start'
         parameter value exceeds the size of the White List, an empty array will be returned.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/sip_correlator_resources/' + sip_id + '/filter', args, False)
@@ -3872,7 +3621,6 @@ class VisionWebApi(object):
     def searchSip(self, args):
         """ searchSip :
         Search for a specific SIP Correlator resource in the system by certain properties.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/sip_correlator_resources/search', args)
@@ -3880,7 +3628,6 @@ class VisionWebApi(object):
     def modifySip(self, sip_id, args):
         """ modifySip :
         Update the properties of an existing SIP Correlator resource.
-
         Sample usage:
         """
         return self._sendRequest('PUT', '/api/sip_correlator_resources/' + sip_id, args, False)
@@ -3891,7 +3638,6 @@ class VisionWebApi(object):
     def disableAfm(self, afm_id, args):
         """ disableAfm :
         Disables an recirculated AFM by disconnecting the attached port, port group or filter.
-
         Sample usage:
         >>> nto.disableAfm('96', {'object_id': '53'})
         ''
@@ -3901,7 +3647,6 @@ class VisionWebApi(object):
     def enableAfm(self, afm_id, args):
         """ enableAfm :
         Enables an recirculated AFM by attaching a port, port group or filter to it.
-
         Sample usage:
         >>> nto.enableAfm('96', {'allocated_bandwidth': 10, 'object_id': '53', 'port_mode': 'NETWORK'})
         ''
@@ -3911,7 +3656,6 @@ class VisionWebApi(object):
     def getBandwidthDetailsAfm(self, afm_id):
         """ getBandwidthDetailsAfm :
         Gets the bandwidth details for the Recirculated AFM resource.
-
         Sample usage:
         >>> nto.getBandwidthDetailsAfm('96')
         {u'allocated_bandwidth': 20, u'total_bandwidth': 160, u'available_bandwidth': 140, u'bandwidth_increment': 10}
@@ -3921,21 +3665,17 @@ class VisionWebApi(object):
     def getAfm(self, afm_id):
         """ getAfm :
         Fetch the properties of a recirculated AFM object.
-
         Sample usage:
         >>> nto.getAfm('96')
         {u'description': u'AFM Resources', u'lane_config_list': [{u'allocated_bandwidth': 10, u'attachment_id': u'52', u'attachment_type': u'PORT'}, {u'allocated_bandwidth': 10, u'attachment_id': u'53', u'attachment_type': u'PORT'}], u'capture_source': None, u'lineboard_id': None, u'default_name': u'L1-AFM', u'resource_status': u'READY', u'name': u'L1-AFM', u'mod_count': 20, u'license_status': u'NOT_PRESENT', u'capture_port_group': None, u'modify_access_settings': {u'policy': u'ALLOW_ALL', u'groups': []}, u'id': 96, u'connect_disconnect_access_settings': {u'policy': u'ALLOW_ALL', u'groups': []}, u'history': [{u'type': u'MODIFY', u'time': 1497393506254, u'caused_by': u'admin', u'details': None, u'props': [u'DESCRIPTION']}]}
-
         >>> nto.getAfm('L1-AFM')
         {u'description': u'AFM Resources', u'lane_config_list': [{u'allocated_bandwidth': 10, u'attachment_id': u'52', u'attachment_type': u'PORT'}, {u'allocated_bandwidth': 10, u'attachment_id': u'53', u'attachment_type': u'PORT'}], u'capture_source': None, u'lineboard_id': None, u'default_name': u'L1-AFM', u'resource_status': u'READY', u'name': u'L1-AFM', u'mod_count': 20, u'license_status': u'NOT_PRESENT', u'capture_port_group': None, u'modify_access_settings': {u'policy': u'ALLOW_ALL', u'groups': []}, u'id': 96, u'connect_disconnect_access_settings': {u'policy': u'ALLOW_ALL', u'groups': []}, u'history': [{u'type': u'MODIFY', u'time': 1497393506254, u'caused_by': u'admin', u'details': None, u'props': [u'DESCRIPTION']}]}
-
         """
         return self._sendRequest('GET', '/api/recirculated_afm_resources/' + afm_id)
 
     def getAllAfms(self):
         """ getAllAfms :
         Fetch a list containing the summaries for all the recirculated AFM resources in the system.
-
         Sample usage:
         >>> nto.getAllAfms()
         [{u'id': 96, u'name': u'L1-AFM'}]
@@ -3945,7 +3685,6 @@ class VisionWebApi(object):
     def searchAfm(self, args):
         """ searchAfm :
         Search for a specific recirculated AFM resource in the system by certain properties.
-
         Sample usage:
         >>> nto.searchAfm({'description': 'AFM Resources'})
         [{u'id': 96, u'name': u'L1-AFM'}]
@@ -3955,7 +3694,6 @@ class VisionWebApi(object):
     def modifyAfm(self, afm_id, args):
         """ modifyAfm:
         Update the properties of an existing recirculated AFM resource.
-
         Sample usage:
         >>> nto.modifyAfm('96', {'description': 'Shared AFM Resources'})
         ''
@@ -3968,7 +3706,6 @@ class VisionWebApi(object):
     def getStats(self, args):
         """ getStats :
         Retrieve a stats snapshot containing the specified objects.
-
         Sample usage:
         >>> nto.getStats({'stat_name': ['np_peak_gtp_v2_deleted_sessions_time', 'np_total_rx_count_valid_packets'], 'port_group': '91'})
         {u'stats_snapshot': [{u'np_peak_gtp_v2_deleted_sessions_time': 1441391232493, u'reset_by': u'null', u'reset_time': 1441390286194, u'default_name': u'PG1', u'stats_time': 1441391232493, u'np_total_rx_count_valid_packets': 0, u'type': u'Port Group', u'id': u'91'}]}
@@ -3978,7 +3715,6 @@ class VisionWebApi(object):
     def resetStats(self, args):
         """ resetStats :
         Reset the stats for a set of specific NTO ports, port groups, and/or filters.
-
         Sample usage:
         >>> nto.resetStats({'PORT': [59], 'PORT_GROUP': [405]})
         {}
@@ -3988,7 +3724,6 @@ class VisionWebApi(object):
     def getManagementStats(self):
         """ getManagementStats :
         Returns the statistics for active management port.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/stats/mgmt_port', None)
@@ -3996,7 +3731,6 @@ class VisionWebApi(object):
     def resetDrops(self, args):
         """ resetDrops :
         Reset the overflow drop counts for a set of specific NTO tool ports and/or output port groups.
-
         Sample usage:
         >>> nto.resetDrops({'PORT': [58]})
         {u'reset_drops_attempt_count': 134, u'reset_drops_success_count': 118}
@@ -4009,46 +3743,47 @@ class VisionWebApi(object):
     def getSpecificSystem(self, system_id):
         """ getSpecificSystem :
         Retrieve the properties of the system specified.
-
         Sample usage:
         """
         return self._sendRequest('GET', '/api/system/' + system_id)
 
-    def getSystem(self):
+    def getSystem(self, properties=None):
         """ getSystem :
         Retrieve the properties of the system.
-
         Sample usage:
         >>> nto.getSystem()
         {u'mgmt_port2_link_status': {u'duplex': u'FULL', u'active_port': False, u'speed': u'1G', u'link_up': True}, u'union_mode': u'INDEPENDENT', u'timestamp_config': {u'time_source': u'LOCAL'}, u'fan_failure_count': 0, u'web_api_config': {u'enabled': True, u'port': 9000, u'token_timeout': {u'value': 10, u'unit': u'MIN'}}, u'session_timeout_interval': 0,
             <snip>
         """
-        return self._sendRequest('GET', '/api/system')
+        query = ""
+        if properties:
+            query = '?properties=' + ''.join(properties.split())
 
-    def getSystemProperties(self, properties):
-        """ getSystemProperties :
-        Fetch one or more systen properties.
-
-        Sample usage:
-        >>> nto.getSystemProperties('snmp_config,dns_config')
-        {u'dns_config': {u'suffix1': None, u'suffix2': None, u'primary_server': None, u'alt_server': None}, u'snmp_config': {u'trap_recipients': [{u'remote_user': None, u'traps': [u'COLD_START', u'WARM_START', u'LINK_UP_DOWN', u'TEST_NOTIFICATION'], u'retry_count': 1, u'host': {u'value': u'155.174.7.97'}, u'version': u'V2', u'community_string': u'V2/155.174.7.97:162', u'timeout': 5, u'port': 162}], u'refresh_time': 1, u'gets_enabled': True, u'traps_enabled': True, u'get_access': [{u'version': u'V2', u'community_string': u'AnueComm4ATSro', u'local_user': None}]}}
-        """
-        return self._sendRequest('GET', '/api/system?properties=' + properties)
+        return self._sendRequest('GET', '/api/system' + query)
 
     def getSystemProperty(self, property):
         """ getSystemProperty :
         Fetch a systen property.
-
         Sample usage:
         >>> nto.getSystemProperty('snmp_config')
         {u'trap_recipients': [{u'remote_user': None, u'traps': [u'COLD_START', u'WARM_START', u'LINK_UP_DOWN', u'TEST_NOTIFICATION'], u'retry_count': 1, u'host': {u'value': u'155.174.7.97'}, u'version': u'V2', u'community_string': u'V2/155.174.7.97:162', u'timeout': 5, u'port': 162}], u'refresh_time': 1, u'gets_enabled': True, u'traps_enabled': True, u'get_access': [{u'version': u'V2', u'community_string': u'AnueComm4ATSro', u'local_user': None}]}
         """
-        return self._sendRequest('GET', '/api/system?properties=' + property)[property]
+        return self.getSystem(property)[property]
+        #return self._sendRequest('GET', '/api/system?properties=' + property)[property]
+
+    def getSystemProperties(self, properties):
+        """ getSystemProperties :
+        Fetch one or more systen properties.
+        Sample usage:
+        >>> nto.getSystemProperties('snmp_config,dns_config')
+        {u'dns_config': {u'suffix1': None, u'suffix2': None, u'primary_server': None, u'alt_server': None}, u'snmp_config': {u'trap_recipients': [{u'remote_user': None, u'traps': [u'COLD_START', u'WARM_START', u'LINK_UP_DOWN', u'TEST_NOTIFICATION'], u'retry_count': 1, u'host': {u'value': u'155.174.7.97'}, u'version': u'V2', u'community_string': u'V2/155.174.7.97:162', u'timeout': 5, u'port': 162}], u'refresh_time': 1, u'gets_enabled': True, u'traps_enabled': True, u'get_access': [{u'version': u'V2', u'community_string': u'AnueComm4ATSro', u'local_user': None}]}}
+        """
+        return self.getSystem(properties)
+        #return self._sendRequest('GET', '/api/system?properties=' + properties)
 
     def modifySystem(self, args):
         """ modifySystem :
         Update the system properties.
-
         Sample usage:
         >>> nto.modifySystem({'system_info': {u'location': 'Austin', u'name': 'The Big Box'}})
         ''
@@ -4058,7 +3793,6 @@ class VisionWebApi(object):
     def modifySpecificSystem(self, system_id, args):
         """ modifySpecificSystem :
         Update the properties of the system specified.
-
         Sample usage:
         >>> nto.modifySystem({'system_info': {u'location': 'Austin', u'name': 'The Big Box'}})
         ''
@@ -4071,7 +3805,6 @@ class VisionWebApi(object):
     def createInlineToolConnector(self, args):
         """ createInlineToolConnector :
         Create a new Inline Tool Connector in the system.
-
         Sample usage:
         >>> nto.createInlineToolConnector({'assigned_status': 'ACTIVE', 'description': 'Tool Connector', 'name': 'Test Tool Connector', 'side_a_port': 17, 'side_b_port': 18, 'sync_current_status': True})
         {'default_name': 'ITC1', 'id': 104, 'name': 'Test Tool Connector'}
@@ -4081,7 +3814,6 @@ class VisionWebApi(object):
     def deleteInlineToolConnector(self, tool_connector_id):
         """ deleteInlineToolConnector :
         Remove an existing inline Tool Connector from the system.
-
         Sample usage:
         >>> nto.deleteInlineToolConnector('101')
         b''
@@ -4095,7 +3827,6 @@ class VisionWebApi(object):
         '?properties=value', where value is comma-separated list to select multiple fields for example:
         /api/resource_type/{object-id}?properties=description,name.
         Query Parameter is optional, see section Partial get under Usage Examples.
-
         Sample usage:
         >>> nto.getInlineToolConnector('101')
         {'assigned_status': 'ACTIVE', 'created': {'caused_by': 'admin', 'details': None, 'time': 1605729055930, 'type': 'CREATE'}, 'current_status': 'ACTIVE', 'default_name': 'ITC1', 'description': 'Tool Connector', 'history': None, 'id': 101, 'mod_count': 0, 'name': 'Test Tool Connector', 'side_a_port': 10, 'side_a_port_group': None, 'side_b_port': 11, 'side_b_port_group': None, 'sync_current_status': True, 'tool_resource_list': []}
@@ -4105,7 +3836,6 @@ class VisionWebApi(object):
     def getAllInlineToolConnectors(self):
         """ getAllInlineToolConnectors :
         Fetch a list containing the summaries for all the Inline Tool Connectors in the system.
-
         Sample usage:
         >>> nto.getAllInlineToolConnectors()
         [{'id': 101, 'name': 'Test Tool Connector'}]
@@ -4115,7 +3845,6 @@ class VisionWebApi(object):
     def searchInlineToolConnectors(self, args):
         """ searchnlineToolConnectors :
         Search for a specific Inline Tool Connector in the system by certain properties.
-
         Sample usage:
         >>> nto.searchInlineToolConnectors({'assigned_status': 'ACTIVE'})
         [{'assigned_status': 'ACTIVE', 'created': {'caused_by': 'admin', 'details': None, 'time': 1605729055930, 'type': 'CREATE'}, 'current_status': 'ACTIVE', 'default_name': 'ITC1', 'description': 'Tool Connector', 'history': None, 'id': 101, 'mod_count': 0, 'name': 'Test Tool Connector', 'side_a_port': 10, 'side_a_port_group': None, 'side_b_port': 11, 'side_b_port_group': None, 'sync_current_status': True, 'tool_resource_list': []}]
@@ -4125,7 +3854,6 @@ class VisionWebApi(object):
     def modifyInlineToolConnector(self, tool_conector_id, args):
         """ modifyInlineToolConnector :
         Update the properties of an existing Inline Tool Connector.
-
         Sample usage:
         >>> nto.modifyInlineToolConnector('101', {'description': 'new'})
         b''
@@ -4138,7 +3866,6 @@ class VisionWebApi(object):
     def createInlineToolResource(self, args):
         """ createInlineToolResource :
         Create a new inline tool resource in the system.
-
         Sample usage:
         >>> nto.createInlineToolResource({"name": "test resource", "tool_connector_list": [{"assigned_status": "ACTIVE", "description": "test resource descr", "name": "test connector", "side_a_port": 10, "side_b_port": 11, "sync_current_status": True}]})
         {'default_name': 'ITR1', 'id': 109, 'name': 'test resource'}
@@ -4148,7 +3875,6 @@ class VisionWebApi(object):
     def deleteInlineToolResource(self, tool_resource_id):
         """ deleteInlineToolConnector :
         Remove an existing inline tool resource from the system.
-
         Sample usage:
         >>> nto.deleteInlineToolResource('New Name')
         b''
@@ -4163,7 +3889,6 @@ class VisionWebApi(object):
         fields for example:
         /api/resource_type/{object-id}?properties=description,name.
         Query Parameter is optional, see section Partial get under Usage Examples.
-
         Sample usage:
         >>> nto.getInlineToolResource('109')
         {'alert_type': 'NO_ALERT', 'created': {'caused_by': 'admin', 'details': None, 'time': 1605730117523, 'type': 'CREATE'}, 'default_name': 'ITR1', 'description': None, 'heartbeat_id': None, 'history': None, 'id': 109, 'ignore_mod_count': True, 'inline_service_chain_priority_list': [], 'is_mac_reversed_rhb': False, 'misc': {'access_map': {'MODIFY_ACCESS_SETTINGS': {'access_settings': {'groups': [], 'policy': 'INHERITED'}, 'affecting_ports': {'10': 'Allow All', '11': 'Allow All'}, 'affecting_resource': {}, 'current_value': 'All users. Derived from *P08, P09: Allow All', 'expression_text': 'All users.', 'operation_name': 'Modify', 'operation_phrase': 'modify', 'tooltip': 'Inherit from Ports', 'user_names': '', 'users_statement': 'Anyone can perform'}}, 'access_props': ['MODIFY_ACCESS_SETTINGS']}, 'mod_count': 0, 'modify_access_settings': {'groups': [], 'policy': 'INHERITED'}, 'name': 'test resource', 'negative_heartbeat_id': None, 'state': 'ACTIVE', 'tool_connector_list': [{'assigned_status': 'ACTIVE', 'connector_type': 'TOOL_CONNECTOR', 'current_status': 'ACTIVE', 'name': 'test connector', 'side_a_port': '10', 'side_b_port': '11', 'sync_current_status': True}]}
@@ -4173,7 +3898,6 @@ class VisionWebApi(object):
     def getAllInlineToolResources(self):
         """ getAllInlineToolResources :
         Fetch a list containing the summaries for all the inline tool resources in the system.
-
         Sample usage:
         >>> nto.getAllInlineToolResources()
         [{'id': 109, 'name': 'test resource'}]
@@ -4183,7 +3907,6 @@ class VisionWebApi(object):
     def searchInlineToolResources(self, args):
         """ searchInlineToolResources :
         Search for a specific inline tool resource in the system by certain properties.
-
         Sample usage:
         >>> nto.searchInlineToolResources({'heartbeat_id': None})
         [{'alert_type': 'NO_ALERT', 'created': {'caused_by': 'admin', 'details': None, 'time': 1605730117523, 'type': 'CREATE'}, 'default_name': 'ITR1', 'description': None, 'heartbeat_id': None, 'history': None, 'id': 109, 'ignore_mod_count': True, 'inline_service_chain_priority_list': [], 'is_mac_reversed_rhb': False, 'misc': {'access_map': {'MODIFY_ACCESS_SETTINGS': {'access_settings': {'groups': [], 'policy': 'INHERITED'}, 'affecting_ports': {'10': 'Allow All', '11': 'Allow All'}, 'affecting_resource': {}, 'current_value': 'All users. Derived from *P08, P09: Allow All', 'expression_text': 'All users.', 'operation_name': 'Modify', 'operation_phrase': 'modify', 'tooltip': 'Inherit from Ports', 'user_names': '', 'users_statement': 'Anyone can perform'}}, 'access_props': ['MODIFY_ACCESS_SETTINGS']}, 'mod_count': 0, 'modify_access_settings': {'groups': [], 'policy': 'INHERITED'}, 'name': 'test resource', 'negative_heartbeat_id': None, 'state': 'ACTIVE', 'tool_connector_list': [{'assigned_status': 'ACTIVE', 'connector_type': 'TOOL_CONNECTOR', 'current_status': 'ACTIVE', 'name': 'test connector', 'side_a_port': '10', 'side_b_port': '11', 'sync_current_status': True}]}]
@@ -4193,7 +3916,6 @@ class VisionWebApi(object):
     def modifyInlineToolResource(self, tool_resource_id, args):
         """ modifyInlineToolConnector :
         Update the properties of an existing inline tool resource.
-
         Sample usage:
         >>> nto.modifyInlineToolResource('109', {'name': 'New Name'})
         b''
@@ -4207,7 +3929,6 @@ class VisionWebApi(object):
         """ getAllUsers :
         Fetch a list containing the summaries for all the users in the system, or
         if a user ID is specified, fetch the properties of that user object.
-
         Sample usage:
         >>> nto.getAllUsers()
         [{u'id': 56, u'name': u'admin'}, {u'id': 52, u'name': u'tcl'}]
@@ -4218,7 +3939,6 @@ class VisionWebApi(object):
         """ getUser :
         Fetch a list containing the summaries for all the users in the system, or
         if a user ID is specified, fetch the properties of that user object.
-
         Sample usage:
         >>> nto.getUser('tcl')
         {u'login_id': u'tcl', u'session_type': None, u'created': {u'type': u'CREATE', u'caused_by': u'admin', u'details': None, u'time': 1442436968401}, u'is_sysadm': True, u'phone': u'867-53009', u'email': u'tcl@nto.com', u'mod_count': 0, u'is_logged_in': False, u'full_name': u'tcl', u'authentication_mode': u'LOCAL', u'id': 52, u'history': []}
@@ -4228,7 +3948,6 @@ class VisionWebApi(object):
     def changePasswordUser(self, user_id, args):
         """ changePasswordUser :
         Change the user password.
-
         Sample usage:
         >>> nto.changePasswordUser('tcl1', {'new_password' : 'tcl1', 'old_password' : 'fredMota@123'})
         ''
@@ -4238,7 +3957,6 @@ class VisionWebApi(object):
     def createUser(self, args):
         """ createUser :
         Create a new user.
-
         Sample usage:
         >>> nto.createUser({'login_id': 'oper', 'is_sysadm': False, 'password': 'oper'})
         {u'id': u'54'}
@@ -4248,7 +3966,6 @@ class VisionWebApi(object):
     def modifyUser(self, user_id, args):
         """ modifyUser :
         Update the properties of an existing user.
-
         Sample usage:
         >>> nto.modifyUser('oper', {'password': '***'})
         ''
@@ -4258,7 +3975,6 @@ class VisionWebApi(object):
     def deleteUser(self, user_id):
         """ deleteUser :
         Remove a user from the system. The user is specified by an user_id.
-
         Sample usage:
         >>> nto.deleteUser('54')
         ''
@@ -4268,7 +3984,6 @@ class VisionWebApi(object):
     def searchUsers(self, args):
         """ searchUsers :
         Search a specific user from the system by certain properties.
-
         Sample usage:
         >>> nto.searchUsers({'is_sysadm': False})
         [{u'id': 54, u'name': u'oper'}]
@@ -4281,7 +3996,6 @@ class VisionWebApi(object):
     def search(self, entity_type, args):
         """ search :
         Search an entity.
-
         Sample usage:
         >>> nto.search('port_groups', {'mode': 'NETWORK'})
         [{u'id': 94, u'name': u'GSC Network Ports PB09-PB16'}, {u'id': 92, u'name': u'GSC Network Ports PB01-PB08'}, {u'id': 91, u'name': u'GSC Network Ports PA01-PA08'}, {u'id': 95, u'name': u'GSC Network Ports PA09-PA16'}]
@@ -4296,7 +4010,6 @@ class VisionWebApi(object):
         Assigns a new mirror port groups to a GSC session port group.
         The mirror port groups will receive a copy of the traffic
         that goes to the source port group.
-
         Sample usage:
         >>> gsc.assignMirrorPortGroups({'port_group_id': 92, 'port_group_id_list': [101]})
         {u'message': u'Mirror port groups assigned successfully.'}
@@ -4309,7 +4022,6 @@ class VisionWebApi(object):
         port group to another session port group - from the non-session port group
         to a session port group - from a session port group to the non-session port
         group.
-
         Sample usage:
         >>> gsc.changePortGroups({'port_group_id': 92, 'port_id_list': [34]})
         {u'message': u'Port Group successfully changed'}
@@ -4319,7 +4031,6 @@ class VisionWebApi(object):
     def clearCriticalAlarm(self, args):
         """ clearCriticalAlarm :
         Clears a GSC critical alarm.
-
         Sample usage:
         >>> gsc.clearCriticalAlarm()
         """
@@ -4328,7 +4039,6 @@ class VisionWebApi(object):
     def clearProbeFailedState(self, args):
         """ clearProbeFailedState :
         Clears the given probes failed state by setting their status to active.
-
         Sample usage:
         >>> gsc.clearProbeFailedState()
         """
@@ -4337,7 +4047,6 @@ class VisionWebApi(object):
     def clearSystemRecoveryAppliance(self):
         """ clearSystemRecoveryAppliance:
         Clear all system properties of the Recovery Appliance.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/clear_system_recovery_appliance', {})
@@ -4345,7 +4054,6 @@ class VisionWebApi(object):
     def connectRecoveryAppliance(self, args):
         """ connectRecoveryAppliance :
         Connect a GSC to a Recovery Appliance by providing the hostname and port.
-
         Sample usage:
         >>> gsc.connectRecoveryAppliance()
         """
@@ -4354,7 +4062,6 @@ class VisionWebApi(object):
     def createGscMirror(self, args):
         """ createGscMirror:
         Creates a new GSC mirror port group and to assign it to a session.
-
         Sample usage:
         >>> gsc.createGscMirror({'description': 'GSC Mirror PG', 'name': 'GSC Mirror', 'port_group_id': 92, 'port_id_list': [36, 37]})
         {u'message': u'New GSC mirror port group created successfully.'}
@@ -4365,7 +4072,6 @@ class VisionWebApi(object):
         """ discardBackup:
         Clears the data of a backup of GSC info from the Recovery Appliance.
         This will cause a GSC restart.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/discard_backup', {})
@@ -4373,7 +4079,6 @@ class VisionWebApi(object):
     def disconnectRecoveryAppliance(self, args):
         """ disconnectRecoveryAppliance:
         Unpair and disconnect a GSC from a Recovery Appliance.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/disconnect_recovery_appliance', args)
@@ -4381,7 +4086,6 @@ class VisionWebApi(object):
     def exportRecoveryApplianceConfig(self, args):
         """ exportRecoveryApplianceConfiguration:
         Export Recovery Appliance configuration to a output file.
-
         Sample usage:
         """
 
@@ -4397,7 +4101,6 @@ class VisionWebApi(object):
     def failover(self):
         """ failover:
         The Failover action is used by a probe to signal a failure.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/failover', {})
@@ -4405,7 +4108,6 @@ class VisionWebApi(object):
     def getProbeHeartbeat(self):
         """ getProbeHeartbeat:
         The Heartbeat action is used to receive the "alive" signal from probes.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/heartbeat', {})
@@ -4413,7 +4115,6 @@ class VisionWebApi(object):
     def importRecoveryApplianceConfig(self, args):
         """ importRecoveryApplianceConfig :
         Import Recovery Appliance configuration from an input file.
-
         Sample usage:
         """
 
@@ -4456,7 +4157,6 @@ class VisionWebApi(object):
     def installRecoveryApplianceSoftware(self, args):
         """ installRecoveryApplianceSoftware :
         Install software on Recovery Appliance.
-
         Sample usage:
         """
 
@@ -4490,7 +4190,6 @@ class VisionWebApi(object):
     def pairRecoveryAppliance(self, args):
         """ pairRecoveryAppliance:
         Pair a GSC with a Recovery Appliance.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/pair_recovery_appliance', args)
@@ -4498,7 +4197,6 @@ class VisionWebApi(object):
     def recoverBackup(self):
         """ recoverBackup:
         Triggers a GSC restart, which will then start recovering the backup data from the Recovery Appliance.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/recover_backup', {})
@@ -4509,7 +4207,6 @@ class VisionWebApi(object):
         When licensed with FNE license, for port modules KAHANA_SFPP_16,
         MOKOLII_CX4, MOKOLII_SFPPLUS, MOKOLII_XFP and WAIKIKI_SFPPLUS
         the user can change the license allocation between modules.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/relocate_port_module_license', args)
@@ -4517,7 +4214,6 @@ class VisionWebApi(object):
     def resetPacketFragmentation(self, args):
         """ resetPacketFragmentation:
         Reset packet Fragmentation on one or more GSC network port groups.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/reset_packet_fragmentation', args)
@@ -4525,7 +4221,6 @@ class VisionWebApi(object):
     def restartRecoveryAppliance(self):
         """ restartRecoveryAppliance:
         Initiate a restart on the Recovery Appliance.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/restart_recovery_appliance', {})
@@ -4537,7 +4232,6 @@ class VisionWebApi(object):
         to that subscriber's active session(s). If the given subscriber has an
         active session then it returns all the pairs of {source port groups,
         allocated tool port default name}.
-
         Sample usage:
         gsc.searchSubscriberByFTeid({'subscriber_ip': '10.10.10.10', 'subscriber_ip_type': 'IPv4', 'subscriber_teid': '12345678'})
         TBD
@@ -4551,7 +4245,6 @@ class VisionWebApi(object):
         subscriber's active session(s). If the given subscriber has an active
         session then it returns all the pairs of {source port groups, allocated
         tool port default name}.
-
         Sample usage:
         >>> gsc.searchSubscriberByImsi({'subscriber_imsi': '123456789012345'})
         {u'subscribers': [{u'subscriber_source_port_groups': [u'PG1', u'PG2', u'PG3', u'PG4'], u'subscriber_destination_tool_port': u'PC01'}]}
@@ -4561,7 +4254,6 @@ class VisionWebApi(object):
     def shutdownRecoveryAppliance(self):
         """ shutdownRecoveryAppliance:
         Initiate a shutdown of the Recovery Appliance.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/shutdown_recovery_appliance', {})
@@ -4569,7 +4261,6 @@ class VisionWebApi(object):
     def startBackup(self):
         """ startBackup:
         Starts a backup of GSC info on the Recovery Appliance.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/start_backup', {})
@@ -4577,7 +4268,6 @@ class VisionWebApi(object):
     def stopMirroring(self, args):
         """ stopMirroring:
         Stops mirroring on a GSC session port group.
-
         Sample usage:
         >>> gsc.stopMirroring({'port_group_id': 100})
         {u'message': u'Stop GSC mirroring completed successfully.'}
@@ -4587,7 +4277,6 @@ class VisionWebApi(object):
     def stopBackup(self):
         """ stopBackup:
         Stops a backup of GSC info on the Recovery Appliance.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/stop_backup', {})
@@ -4595,7 +4284,6 @@ class VisionWebApi(object):
     def unpairRecoveryAppliance(self, args):
         """ unpairRecoveryAppliance:
         Pair a GSC with a Recovery Appliance.
-
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/unpair_recovery_appliance', args)
@@ -4603,7 +4291,6 @@ class VisionWebApi(object):
     def getNtpServersStatus(self):
         """ getNtpServersStatus:
         Retrieve NTP servers status configured for the Recovery Appliance.
-
         Sample usage:
         >>> gsc.getNTPServersStatus()
        TBD
@@ -4613,7 +4300,6 @@ class VisionWebApi(object):
     def getNumberSessions(self):
         """ getNumberSessions:
         Retrieve the number sessions backed up in the Recovery Appliance.
-
         Sample usage:
         TBD
         """
@@ -4622,7 +4308,6 @@ class VisionWebApi(object):
     def getRecoveryApplianceProperties(self, args):
         """ getRecoveryApplianceProperties:
         Retrieve the properties of the Recovery Appliance.
-
         Sample usage:
         >>> gsc.getRecoveryApplianceProperties()
         TBD
@@ -4632,7 +4317,6 @@ class VisionWebApi(object):
     def modifyRecoveryApplianceProperties(self, args):
         """ modifyRecoveryApplianceProperties:
         Update the properties of the Recovery Appliance.
-
         Sample usage:
         >>> gsc.modifyRecoveryApplianceProperties()
         TBD
@@ -4642,7 +4326,6 @@ class VisionWebApi(object):
     def createProbe(self, port_group, args):
         """ createProbe:
         Adds a probe to a port group.
-
         Sample usage:
         >>> gsc.createProbe('100', {'description': 'GRE Probe', 'ip_address': '10.218.20.20', 'is_redundant': False, 'name': 'RADCOM Probe', 'port_id_list': [36, 37]})
         {u'id': 1}
@@ -4653,7 +4336,6 @@ class VisionWebApi(object):
     def deleteProbe(self, port_group, probe):
         """ deleteProbe:
         Delete a probe associated with a port group.
-
         Sample usage:
         gsc.deleteProbe('100', '1')
         """
@@ -4663,7 +4345,6 @@ class VisionWebApi(object):
     def getAllProbes(self, port_group):
         """ getAllProbes:
         Retrieves all probes associated with a port group.
-
         Sample usage:
         >>> gsc.getAllProbes('100')
         [{u'is_redundant': False, u'description': u'GRE Probe', u'created_date_time': 1503632180163, u'last_modified_date_time': 1503632180163, u'is_active': True, u'created_by_user': u'admin', u'last_modified_by_user': u'admin', u'failed_over_to_probe_id': None, u'ip_address': u'10.218.20.20', u'id': 2, u'port_id_list': [36, 37], u'name': u'RADCOM Probe'}]
@@ -4673,7 +4354,6 @@ class VisionWebApi(object):
     def getProbe(self, port_group, probe):
         """ getProbe:
         Retrieves a probe associated with a port group.
-
         Sample usage:
         >>> gsc.getProbe('100', '3')
         {u'is_redundant': False, u'description': u'GRE Probe', u'created_date_time': 1503632397617, u'last_modified_date_time': 1503632397617, u'is_active': False, u'created_by_user': u'admin', u'last_modified_by_user': u'admin', u'failed_over_to_probe_id': None, u'ip_address': u'10.218.20.20', u'id': 3, u'port_id_list': [36, 37], u'name': u'RADCOM Probe'}
@@ -4683,7 +4363,6 @@ class VisionWebApi(object):
     def modifyProbe(self, port_group, probe, args):
         """ modifyProbe:
         Updates a probe associated with a port group.
-
         Sample usage:
         >>> gsc.modifyProbe('100', '4', {'ip_address': '10.218.20.30'})
         ''
@@ -4695,7 +4374,6 @@ class VisionWebApi(object):
         """ getImsiCsvFile :
         All IMSIs configured for the filter object is returned in a CSV file.
         The file is returned as an application/octet-stream.
-
         Sample usage:
         >>> gsc.getImsiCsvFile('F1', {'file_name': '/Users/fedemota/Desktop/IMSI-List1.csv'})
         """
@@ -4711,7 +4389,6 @@ class VisionWebApi(object):
     def partiallyModifyFilter(self, filter_id, args):
         """ partiallyModifyFilter :
         Partially update properties of a filter.
-
         Sample usage:
         >>> gsc.partiallyModifyFilter('F1', {'gsc_session_filter_settings': {'imsi_list': ['************9**']}})
         ''
@@ -4751,7 +4428,6 @@ class VisionWebApi(object):
     def partiallyDeleteFilter(self, filter_id, args):
         """ partiallyDeleteFilter :
         Partially delete a filter from the system.
-
         Sample usage:
         >>> gsc.partiallyDeleteFilter('F1', {'gsc_session_filter_settings': {'imsi_list': ['************9**']}})
         ''
