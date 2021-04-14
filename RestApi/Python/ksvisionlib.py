@@ -4463,3 +4463,227 @@ class VisionWebApi(object):
             #data = json.loads(data.decode('ascii'))
 
             return data
+
+    ###################################################
+    # GSC CPP Resources
+    ###################################################
+    def getAllGscFilters(self):
+        """ getAllGscFilters :
+        Fetch a list containing the summaries for all the filters in the system.
+        Sample usage:
+        >>> nto.getAllGscFilters()
+        """
+        return self._sendRequest('GET', '/api/gsc_filters')
+
+    def getGscFilter(self, filter, properties=None):
+        """ getGscFilter :
+        Fetch the properties of a filter object.
+        Sample usage:
+        >>> nto.getGscFilter('461')
+        {u'dynamic_filter_type': u'TWO_STAGE', u'connect_in_access_settings': {u'policy': u'INHERITED'}, u'dest_port_list': [], u'match_count_unit': u'PACKETS', u'description': None, u'resource_access_settings': {u'policy': u'INHERITED'}, u'created': None, u'modify_access_settings': {u'policy': u'INHERITED'}, u'default_name': u'F3', u'dest_port_group_list': [], u'name': u'Voice VLANs', u'mod_count': 6, u'snmp_tag': None, u'mode': u'PASS_BY_CRITERIA', u'criteria': {u'vlan': {u'priority': None, u'vlan_id': u'1000'}, u'logical_operation': u'AND'}, u'keywords': [], u'source_port_group_list': [], u'source_port_list': [410, 428], u'connect_out_access_settings': {u'policy': u'INHERITED'}, u'id': 461, u'history': [{u'type': u'MODIFY', u'time': 1442251734144, u'caused_by': u'internal', u'details': None, u'props': [u'SOURCE_PORT_LIST', u'DEST_PORT_LIST']}]}
+        """
+        query = ""
+        if properties:
+            query = '?properties=' + ''.join(properties.split())
+
+        return self._sendRequest('GET', '/api/gsc_filters/' + filter + query)
+
+    def createGscFilter(self, args, allowTemporayDataLoss=False):
+        """ createGscFilter :
+        Create a new filter in the system.
+        Sample usage:
+        >>> nto.createGscFilter({'source_port_list': ['218', '220'], 'dest_port_list': ['219'], 'mode': 'PASS_ALL'})
+        {u'id': u'466'}
+        """
+        return self._sendRequest('POST', '/api/gsc_filters?allowTemporayDataLoss=' + str(allowTemporayDataLoss), args)
+
+    def modifyGscFilter(self, filter_id, args, allowTemporayDataLoss=False):
+        """ modifyGscFilter :
+        Update the properties of an existing gsc filter.
+        Sample usage:
+        >>> nto.modifyFilter('F4', {'mode' : 'PASS_BY_CRITERIA', 'criteria' : {'logical_operation': 'AND', 'ipv4_session_flow': {'session_sets': [{'a_sessions': ['10.0.0.0/24:1', '12.0.0.0/24:1'], 'b_sessions': ['14.0.0.0/24:1', '16.0.0.0/24:1']}], 'flow_type': 'UNI'}}})
+        ''
+        """
+        return self._sendRequest('PUT', '/api/gsc_filters/' + filter_id + '?allowTemporayDataLoss=' + str(allowTemporayDataLoss), args, False)
+
+    def searchGscFilters(self, args):
+        """ searchGscFilters :
+        Search for a specific filter in the system by certain properties.
+        Sample usage:
+        >>> nto.searchFilters({'mode' : 'PASS_BY_CRITERIA'})
+        [{u'id': 463, u'name': u'Syn Attack'}, {u'id': 465, u'name': u'Too Much Overhead'}, {u'id': 466, u'name': u'F8'}, {u'id': 55, u'name': u'F4'}, {u'id': 460, u'name': u'TCP, UDP, HTTP'}, {u'id': 462, u'name': u'ARP Storm'}, {u'id': 461, u'name': u'Voice VLANs'}]
+        """
+        return self._sendRequest('POST', '/api/gsc_filters/search', args)
+
+    def deleteGscFilter(self, filter_id):
+        """ deleteGscFilter :
+        Remove a filter from the system.
+        Sample usage:
+        >>> nto.deleteGscFilter('F4')
+        ''
+        """
+        return self._sendRequest('DELETE', '/api/gsc_filters/' + filter_id, None, False)
+
+    def getGscFilterProperty(self, filter, property):
+        """ getGscFilterProperty :
+        Fetch a property of a filter object which is specified by its filter_id_or_name.
+        Sample usage:
+        >>> nto.getFilterProperty('F1', 'keywords')
+        [u'TIME']
+        """
+        return self.getGscFilter(filter, property)[property]
+        #return self._sendRequest('GET', '/api/filters/' + filter + '?properties=' + property)[property]
+
+    def getGscFilterProperties(self, filter, properties):
+        """ getGscFilterProperties :
+        Fetch a list of properties of a filter object which is specified by its filter_id_or_name.
+        Sample usage:
+        >>> nto.getFilterProperties('F1', 'mode,name')
+        {u'mode': u'PASS_ALL', u'name': u'L2-Resoure-Akamai'}
+        """
+        return self.getGscFilter(filter, properties)
+        #return self._sendRequest('GET', '/api/filters/' + filter + '?properties=' + properties)
+
+    ###################################################
+    # GSC CPP Resource
+    ###################################################
+    def getAllGscCppResources(self):
+        """ getAllGscCppResources :
+        Fetch a list containing the summaries for all the ATIP resources in the system.
+        Sample usage:
+        >>> nto.getAllGscFilters()
+        [{'id': 77, 'name': 'GSC1'}, {'id': 78, 'name': 'GSC2'}]
+        """
+        return self._sendRequest('GET', '/api/gsc_cpp_resources')
+
+    def getGscCppResource(self, resource, properties=None):
+        """ getGscCppResource :
+        Fetch the properties of an ATIP resource.
+        Sample usage:
+        >>> nto.getGscFilter('77')
+        {'channel_id': -1, 'created': {'caused_by': 'admin', 'details': None, 'time': 1617722510407, 'type': 'CREATE'}, 'default_name': 'GSC1', 'description': None, 'dest_port_group_list': [74], 'id': 77, 'misc': {'access_map': {}, 'access_props': []}, 'mod_count': 9, 'name': 'GSC1', 'number': 1, 'source_port_group_list': [75]}
+        """
+        query = ""
+        if properties:
+            query = '?properties=' + ''.join(properties.split())
+
+        return self._sendRequest('GET', '/api/gsc_cpp_resources/' + resource + query)
+
+    def modifyGscCppResource(self, resource_id, args, allowTemporayDataLoss=False):
+        """ modifyGscFilter :
+        Update the properties of an existing ATIP resource.
+        Sample usage:
+        >>> nto.modifyGscFilter('GSC3', {'description': 'The second GSC Session Filter'})
+        b''
+        """
+        return self._sendRequest('PUT', '/api/gsc_filters/' + resource_id, args, False)
+
+    def searchGscCppResources(self, args):
+        """ searchGscCppResources :
+        Search for a specific ATIP resource in the system by certain properties.
+        Sample usage:
+        >>> nto.searchGscFilters({'channel_id': 1})
+        [{'channel_id': 1, 'created': {'caused_by': 'admin', 'details': None, 'time': 1618421128534, 'type': 'CREATE'}, 'default_name': 'GSC3', 'description': 'The second GSC Session Filter', 'dest_port_group_list': [76], 'id': 92, 'misc': {'access_map': {}, 'access_props': []}, 'mod_count': 1, 'name': 'GSC3', 'number': 3, 'source_port_group_list': [75]}]
+        """
+        return self._sendRequest('POST', '/api/gsc_cpp_resources/search', args)
+
+    def getGscCppResourceProperty(self, resource, property):
+        """ getGscFilterProperty :
+        Fetch a property of a GSC CPP resource object which is specified by its resource_id_or_name.
+        Sample usage:
+        >>> nto.getGscFilterProperty('GSC3', 'channel_id')
+        1
+        """
+        return self.getGscFilter(resource, property)[property]
+        #return self._sendRequest('GET', '/api/gsc_cpp_resources/' + resource + '?properties=' + property)[property]
+
+    def getGscFilterProperties(self, filter, properties):
+        """ getGscFilterProperties :
+        Fetch a list of properties of a GSC CPP resource object which is specified by its resource_id_or_name.
+        Sample usage:
+        >>> nto.getGscFilterProperties('GSC3', 'channel_id, description')
+        {'channel_id': 1, 'description': 'The second GSC Session Filter'}
+        """
+        return self.getGscFilter(filter, properties)
+        #return self._sendRequest('GET', '/api/gsc_cpp_resources/' + resource + '?properties=' + properties)
+
+    ###################################################
+    # GSC Filters
+    ###################################################
+    def getAllGscFilters(self):
+        """ getAllGscFilters :
+        Fetch a list containing the summaries for all the filters in the system.
+        Sample usage:
+        >>> nto.getAllGscFilters()
+        [{'id': 77, 'name': 'GSC1'}, {'id': 78, 'name': 'GSC2'}]
+        """
+        return self._sendRequest('GET', '/api/gsc_filters')
+
+    def getGscFilter(self, filter, properties=None):
+        """ getGscFilter :
+        Fetch the properties of a filter object.
+        Sample usage:
+        >>> nto.getGscFilter('77')
+        {'channel_id': -1, 'created': {'caused_by': 'admin', 'details': None, 'time': 1617722510407, 'type': 'CREATE'}, 'default_name': 'GSC1', 'description': None, 'dest_port_group_list': [74], 'id': 77, 'misc': {'access_map': {}, 'access_props': []}, 'mod_count': 9, 'name': 'GSC1', 'number': 1, 'source_port_group_list': [75]}
+        """
+        query = ""
+        if properties:
+            query = '?properties=' + ''.join(properties.split())
+
+        return self._sendRequest('GET', '/api/gsc_filters/' + filter + query)
+
+    def createGscFilter(self, args, allowTemporayDataLoss=False):
+        """ createGscFilter :
+        Create a new filter in the system.
+        Sample usage:
+        >>> nto.createGscFilter({'dest_port_group_list': [76], 'source_port_group_list': [75]})
+        {'channel_id': 1, 'default_name': 'GSC3', 'id': 92, 'name': 'GSC3'}
+        """
+        return self._sendRequest('POST', '/api/gsc_filters?allowTemporayDataLoss=' + str(allowTemporayDataLoss), args)
+
+    def modifyGscFilter(self, filter_id, args, allowTemporayDataLoss=False):
+        """ modifyGscFilter :
+        Update the properties of an existing gsc filter.
+        Sample usage:
+        >>> nto.modifyGscFilter('GSC3', {'description': 'The second GSC Session Filter'})
+        b''
+        """
+        return self._sendRequest('PUT', '/api/gsc_filters/' + filter_id + '?allowTemporayDataLoss=' + str(allowTemporayDataLoss), args, False)
+
+    def searchGscFilters(self, args):
+        """ searchGscFilters :
+        Search for a specific filter in the system by certain properties.
+        Sample usage:
+        >>> nto.searchGscFilters({'channel_id': 1})
+        [{'channel_id': 1, 'created': {'caused_by': 'admin', 'details': None, 'time': 1618421128534, 'type': 'CREATE'}, 'default_name': 'GSC3', 'description': 'The second GSC Session Filter', 'dest_port_group_list': [76], 'id': 92, 'misc': {'access_map': {}, 'access_props': []}, 'mod_count': 1, 'name': 'GSC3', 'number': 3, 'source_port_group_list': [75]}]
+        """
+        return self._sendRequest('POST', '/api/gsc_filters/search', args)
+
+    def deleteGscFilter(self, filter_id):
+        """ deleteGscFilter :
+        Remove a filter from the system.
+        Sample usage:
+        >>> nto.deleteGscFilter('GSC3')
+        Data=b'Not implemeted yet'
+        """
+        return self._sendRequest('DELETE', '/api/gsc_filters/' + filter_id, None, False)
+
+    def getGscFilterProperty(self, filter, property):
+        """ getGscFilterProperty :
+        Fetch a property of a filter object which is specified by its filter_id_or_name.
+        Sample usage:
+        >>> nto.getGscFilterProperty('GSC3', 'channel_id')
+        1
+        """
+        return self.getGscFilter(filter, property)[property]
+        #return self._sendRequest('GET', '/api/gsc_filters/' + filter + '?properties=' + property)[property]
+
+    def getGscFilterProperties(self, filter, properties):
+        """ getGscFilterProperties :
+        Fetch a list of properties of a filter object which is specified by its filter_id_or_name.
+        Sample usage:
+        >>> nto.getGscFilterProperties('GSC3', 'channel_id, description')
+        {'channel_id': 1, 'description': 'The second GSC Session Filter'}
+        """
+        return self.getGscFilter(filter, properties)
+        #return self._sendRequest('GET', '/api/gsc_filters/' + filter + '?properties=' + properties)
