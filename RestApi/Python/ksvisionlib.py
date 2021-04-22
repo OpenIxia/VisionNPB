@@ -147,6 +147,9 @@
 #    - Added method deletePort
 #    - Added method getPortTransceiverInfo
 #
+# April 22, 2021
+#    - Added all the methods for Boards
+#
 # COPYRIGHT 2019-2021 Keysight Technologies.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -3105,6 +3108,45 @@ class VisionWebApi(object):
         ''
         """
         return self._sendRequest('PUT', '/api/line_boards/' + line_board, args, False)
+
+    ###################################################
+    # Boards
+    ###################################################
+    def getAllBoards(self):
+        """ getAllBoards :
+        Fetch a list containing the summaries for all the boards in the system.
+        Sample usage:
+        >>> nto.getAllBoards()
+        [{'id': 74, 'management_port_enabled': False, 'name': 'Board: 1', 'number': None, 'port_module_mode': 'NONE', 'slot': 'A', 'smart_blank_present': False, 'state': 'READY', 'type': 'NETSTACK_16_QSFP'}, {'id': 75, 'management_port_enabled': False, 'name': 'Board: 3', 'number': None, 'port_module_mode': 'GSC_FD', 'slot': 'C', 'smart_blank_present': False, 'state': 'READY', 'type': 'PACKETSTACK_400_QSFP28'}, {'id': 76, 'management_port_enabled': False, 'name': 'Board: 5', 'number': None, 'port_module_mode': 'PACKETSTACK', 'slot': 'R', 'smart_blank_present': False, 'state': 'READY', 'type': 'PACKETSTACK_400_REAR'}, {'id': 77, 'management_port_enabled': False, 'name': 'Board: 2', 'number': None, 'port_module_mode': 'PACKETSTACK', 'slot': 'B', 'smart_blank_present': False, 'state': 'READY', 'type': 'PACKETSTACK_400_QSFP28'}, {'id': 78, 'management_port_enabled': False, 'name': 'Board: 4', 'number': None, 'port_module_mode': 'NONE', 'slot': 'D', 'smart_blank_present': False, 'state': 'READY', 'type': 'NETSERVICE_4_QSFP28'}]
+        """
+        return self._sendRequest('GET', '/api/boards')
+
+    def getBoard(self, board):
+        """ getBoard :
+        Fetch the properties of a board object.
+        Sample usage:
+        >>> nto.getBoard('Board: 1')
+        {'default_name': 'Board: 1', 'id': 74, 'management_port_enabled': False, 'mod_count': 4, 'modify_access_settings': {'groups': [], 'policy': 'ALLOW_ALL'}, 'name': 'Board: 1', 'number': None, 'port_module_mode': 'NONE', 'slot': 'A', 'smart_blank_present': False, 'state': 'READY', 'type': 'NETSTACK_16_QSFP'}
+        """
+        return self._sendRequest('GET', '/api/boards/' + board)
+
+    def searchBoard(self, args):
+        """ searchBoard :
+        Fetch a list containing the summaries for all the boards in the system.
+        Sample usage:
+        >>> nto.searchBoard({'slot': 'C'})
+        [{'default_name': 'Board: 3', 'id': 75, 'management_port_enabled': False, 'mod_count': 6, 'modify_access_settings': {'groups': [], 'policy': 'ALLOW_ALL'}, 'name': 'Board: 3', 'number': None, 'port_module_mode': 'GSC_FD', 'slot': 'C', 'smart_blank_present': False, 'state': 'READY', 'type': 'PACKETSTACK_400_QSFP28'}]
+        """
+        return self._sendRequest('POST', '/api/boards/search', args)
+
+    def modifyBoard(self, board, args):
+        """ modifyBoard :
+        Update the properties of an existing board.
+        Sample usage:
+        >>> nto.modifyBoard('75', {'port_module_mode': 'PACKETSTACK'})
+        b''
+        """
+        return self._sendRequest('PUT', '/api/boards/' + board, args, False)
 
     ###################################################
     # Monitors
