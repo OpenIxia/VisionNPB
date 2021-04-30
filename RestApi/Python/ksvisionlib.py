@@ -13,7 +13,7 @@
 #   - Using certificates in urllib3
 #     http://stackoverflow.com/questions/23954120/using-certificates-in-urllib3
 #
-# History:i#
+# History:
 #  February 8, 2019:
 #    - Initial version.
 #    - In sync with the Network Visibility Software 5.0.0,
