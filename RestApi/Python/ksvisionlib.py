@@ -158,6 +158,35 @@
 #        - Added method getNetserviceLicensedFeatures
 #        - In SIP Correlator Resources, changed "White List" to "Allow List"
 #
+# May 3, 2021
+#    - Fixed/renamed duplicated searchCtePortGroup to searchCtePorts
+#    - Renamed searchCapture to searchCaptures
+#    - Renamed searchAggregator to searchAggregators
+#    - Renamed searchAtip to searchAtips
+#    - Renamed searchAnalysisEngine to searchAnalysisEngines
+#    - Renamed saveCteBufferCapture to saveCteBufferCaptures
+#    - Renamed searchCteCapture to searchCteCaptures
+#    - Renamed searchCteConnection to searchCteConnections
+#    - Renamed searchCteFilter to searchCteFilters
+#    - Renamed searchCteMember to searchCteMembers
+#    - Renamed searchCteMonitor to searchCteMonitors
+#    - Renamed searchCteNetflowResource to searchCteNetflowResources
+#    - Renamed searchCtePortGroup to searchCtePortGroups
+#    - Renamed searchIfcRoute to searchIfcRoutes
+#    - Renamed searchCte to searchCtes
+#    - Renamed searchIcon to searchIcons
+#    - Renamed searchGscResource to searchGscResources
+#    - Renamed searchGtpFdResource to searchGtpFdResources
+#    - Renamed searchHeartbeat to searchHeartbeats
+#    - Renamed searchLineBoard to searchLineBoards
+#    - Renamed searchBoard to searchBoards
+#    - Renamed searchNetserviceInstance to searchNetserviceInstances
+#    - Renamed searchRtp to searchRtps
+#    - Renamed searchSip to searchSips
+#    - Renamed searchAfm to searchAfms
+#    - Renamed searchSubscriberByFTeid to searchSubscribersByFTeid
+#    - Renamed searchSubscriberByImsi to searchSubscribersByImsi
+#
 # COPYRIGHT 2019-2021 Keysight Technologies.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -1503,11 +1532,11 @@ class VisionWebApi(object):
         """
         return self._sendRequest('POST', '/api/capture_resources/' + str(resource) + '/save_buffer', args)
 
-    def searchCapture(self, args):
-        """ searchCapture :
+    def searchCaptures(self, args):
+        """ searchCaptures :
         Search for a specific capture in the system by certain properties.
         Sample usage:
-        >>> nto.searchCapture({'status': 'IDLE_WITH_DATA'})
+        >>> nto.searchCaptures({'status': 'IDLE_WITH_DATA'})
         [{u'id': 177, u'name': u'L1-CAP'}]
         """
         return self._sendRequest('POST', '/api/capture_resources/search', args)
@@ -1578,8 +1607,8 @@ class VisionWebApi(object):
         """
         return self._sendRequest('PUT', '/api/aggregator_resources/' + str(resource) + '/enable', args, False)
 
-    def searchAggregator(self, args):
-        """ searchAggregator :
+    def searchAggregators(self, args):
+        """ searchAggregators :
         Search for a specific Aggregator resource in the system by certain properties.
         Sample usage:
         """
@@ -1632,11 +1661,11 @@ class VisionWebApi(object):
         """
         return self._sendRequest('PUT', '/api/atip_resources/' + str(resource) + '/enable', args, False)
 
-    def searchAtip(self, args):
-        """ searchAtip :
+    def searchAtips(self, args):
+        """ searchAtips :
         Search for a specific ATIP resource in the system by certain properties.
         Sample usage:
-        >>> nto.searchAtip({'resource_status': 'READY'})
+        >>> nto.searchAtips({'resource_status': 'READY'})
         [{u'id': 179, u'name': u'L2-ATIP'}]
         """
         return self._sendRequest('POST', '/api/atip_resources/search', args)
@@ -1760,8 +1789,8 @@ class VisionWebApi(object):
         """
         return self._sendRequest('GET', '/api/cte_ae_resources')
 
-    def searchAnalysisEngine(self, args):
-        """ searchAnalysisEngine :
+    def searchAnalysisEngines(self, args):
+        """ searchAnalysisEngines :
         Search a specific IFC Analysis Engine resource by certain properties.
         Sample usage:
         """
@@ -1846,15 +1875,15 @@ class VisionWebApi(object):
         args = {}
         return self._sendRequest('PUT', '/api/cte_capture_resources/' + str(resource) + '/reset_buffer', args, False)
 
-    def saveCteBufferCapture(self, resource, args):
-        """ saveCteBufferCapture :
+    def saveCteBufferCaptures(self, resource, args):
+        """ saveCteBufferCaptures :
         Search for a specific capture in the system by certain properties.
         Sample usage:
         """
         return self._sendRequest('POST', '/api/cte_capture_resources/' + str(resource) + '/save_buffer', args)
 
-    def searchCteCapture(self, args):
-        """ searchCteCapture :
+    def searchCteCaptures(self, args):
+        """ searchCteCaptures :
         Search for a specific capture in the system by certain properties.
         Sample usage:
         """
@@ -1922,8 +1951,8 @@ class VisionWebApi(object):
         """
         return self._sendRequest('GET', '/api/cte_connections')
 
-    def searchCteConnection(self, args):
-        """ searchCteConnection :
+    def searchCteConnections(self, args):
+        """ searchCteConnections :
         Search a specific CTE connection by certain properties.
         Sample usage:
         """
@@ -1967,8 +1996,8 @@ class VisionWebApi(object):
         """
         return self._sendRequest('GET', '/api/cte_filters')
 
-    def searchCteFilter(self, args):
-        """ searchCteFilter :
+    def searchCteFilters(self, args):
+        """ searchCteFilters :
         Search a specific CTE filter by certain properties.
         Sample usage:
         """
@@ -1998,8 +2027,8 @@ class VisionWebApi(object):
         """
         return self._sendRequest('GET', '/api/cte_members')
 
-    def searchCteMember(self, args):
-        """ searchCteMember :
+    def searchCteMembers(self, args):
+        """ searchCteMembers :
         Search a specific CTE member by certain properties.
         Sample usage:
         """
@@ -2043,8 +2072,8 @@ class VisionWebApi(object):
         """
         return self._sendRequest('GET', '/api/cte_monitors')
 
-    def searchCteMonitor(self, args):
-        """ searchCteMonitor :
+    def searchCteMonitors(self, args):
+        """ searchCteMonitors :
         Search a specific IFC monitor by certain properties.
         Sample usage:
         """
@@ -2095,8 +2124,8 @@ class VisionWebApi(object):
         """
         return self._sendRequest('GET', '/api/cte_netflow_resources')
 
-    def searchCteNetflowResource(self, args):
-        """ searchCteNetflowResource :
+    def searchCteNetflowResources(self, args):
+        """ searchCteNetflowResources :
         Search a specific IFC Netflow resource by certain properties.
         Sample usage:
         """
@@ -2315,8 +2344,8 @@ class VisionWebApi(object):
         """
         return self._sendRequest('GET', '/api/cte_port_groups')
 
-    def searchCtePortGroup(self, args):
-        """ searchCtePortGroup :
+    def searchCtePortGroups(self, args):
+        """ searchCtePortGroups :
         Search a specific CTE port group by certain properties.
         Sample usage:
         """
@@ -2362,8 +2391,8 @@ class VisionWebApi(object):
         """
         return self._sendRequest('GET', '/api/cte_ports')
 
-    def searchCtePortGroup(self, args):
-        """ searchCtePortGroup :
+    def searchCtePorts(self, args):
+        """ searchCtePorts :
         Search a specific CTE port by certain properties.
         Sample usage:
         """
@@ -2393,8 +2422,8 @@ class VisionWebApi(object):
         """
         return self._sendRequest('GET', '/api/cte_routes/' + str(ifc_route_id))
 
-    def searchIfcRoute(self, args):
-        """ searchIfcRoute :
+    def searchIfcRoutes(self, args):
+        """ searchIfcRoutes :
         Search a specific IFC route by certain properties.
         Sample usage:
         """
@@ -2432,8 +2461,8 @@ class VisionWebApi(object):
         args = {}
         return self._sendRequest('DELETE', '/api/cte_remote_system/' + str(cte_id) , args, False)
 
-    def searchCte(self, args):
-        """ searchCte :
+    def searchCtes(self, args):
+        """ searchCtes :
         Search by certain properties for a specific CTE remote systems available on this device.
         Sample usage:
         """
@@ -2535,8 +2564,8 @@ class VisionWebApi(object):
         """
         return self._sendRequest('PUT', '/api/custom_icons/' + str(icon_id), args, False)
 
-    def searchIcon(self, args):
-        """ searchIcon :
+    def searchIcons(self, args):
+        """ searchIcons :
         Search for a specific custom icon in the system by certain properties.
         Sample usage:
         >>> nto.searchIcon({'name' : 'A Big Bomb!'})
@@ -2860,8 +2889,8 @@ class VisionWebApi(object):
         """
         return self._sendRequest('POST', '/api/gsc_afm_resources/' + str(gsc_resource_id) + '/reset_gsc_fragmentation_engine')
 
-    def searchGscResource(self, args):
-        """ searchGscResource :
+    def searchGscResources(self, args):
+        """ searchGscResources :
         Search for a specific GSC resource in the system by certain properties.
         Sample usage:
         """
@@ -2912,8 +2941,8 @@ class VisionWebApi(object):
         """
         return self._sendRequest('GET', '/api/gtp_fd_afm_resources')
 
-    def searchGtpFdResource(self, args):
-        """ searchGtpFdResource :
+    def searchGtpFdResources(self, args):
+        """ searchGtpFdResources :
         Search for a specific AFM resource in the system by certain properties.
         Sample usage:
         """
@@ -2957,8 +2986,8 @@ class VisionWebApi(object):
         """
         return self._sendRequest('GET', '/api/heartbeats')
 
-    def searchHeartbeat(self, args):
-        """ searchHeartbeat :
+    def searchHeartbeats(self, args):
+        """ searchHeartbeats :
         Search for a specific tool heartbeat in the system by certain properties.
         Sample usage:
         """
@@ -3089,11 +3118,11 @@ class VisionWebApi(object):
         """
         return self._sendRequest('GET', '/api/line_boards/' + str(line_board))
 
-    def searchLineBoard(self, args):
-        """ searchLineBoard :
+    def searchLineBoards(self, args):
+        """ searchLineBoards :
         Search for a specific capture in the system by certain properties.
         Sample usage:
-        >>> nto.searchLineBoard({'name': 'LC6'})
+        >>> nto.searchLineBoards({'name': 'LC6'})
         [{u'id': 471, u'name': u'LC6'}]
         """
         return self._sendRequest('POST', '/api/line_boards/search', args)
@@ -3138,11 +3167,11 @@ class VisionWebApi(object):
         """
         return self._sendRequest('GET', '/api/boards/' + str(board))
 
-    def searchBoard(self, args):
-        """ searchBoard :
+    def searchBoards(self, args):
+        """ searchBoards :
         Fetch a list containing the summaries for all the boards in the system.
         Sample usage:
-        >>> nto.searchBoard({'slot': 'C'})
+        >>> nto.searchBoards({'slot': 'C'})
         [{'default_name': 'Board: 3', 'id': 75, 'management_port_enabled': False, 'mod_count': 6, 'modify_access_settings': {'groups': [], 'policy': 'ALLOW_ALL'}, 'name': 'Board: 3', 'number': None, 'port_module_mode': 'GSC_FD', 'slot': 'C', 'smart_blank_present': False, 'state': 'READY', 'type': 'PACKETSTACK_400_QSFP28'}]
         """
         return self._sendRequest('POST', '/api/boards/search', args)
@@ -3277,8 +3306,8 @@ class VisionWebApi(object):
         """
         return self._sendRequest('POST', '/api/netservice_instances/' + str(netservive_id) + '/restart', None, False)
 
-    def searchNetserviceInstance(self, args):
-        """ searchNetserviceInstance :
+    def searchNetserviceInstances(self, args):
+        """ searchNetserviceInstances :
         Search for a specific netservice instance in the system by certain properties.
         Sample usage:
         """
@@ -3341,8 +3370,8 @@ class VisionWebApi(object):
         """
         return self._sendRequest('GET', '/api/netservices')
 
-    def searchNetservice(self, args):
-        """ searchNetservice :
+    def searchNetservices(self, args):
+        """ searchNetservices :
         Search for a specific netservice in the system by certain properties.
         Sample usage:
         """
@@ -3591,8 +3620,8 @@ class VisionWebApi(object):
         """
         return self._sendRequest('GET', '/api/rtp_correlator_resources')
 
-    def searchRtp(self, args):
-        """ searchRtp :
+    def searchRtps(self, args):
+        """ searchRtps :
         Search for a specific RTP Correlator resource in the system by certain properties.
         Sample usage:
         """
@@ -3812,8 +3841,8 @@ class VisionWebApi(object):
         """
         return self._sendRequest('POST', '/api/sip_correlator_resources/' + str(sip_id) + '/filter', args, False)
 
-    def searchSip(self, args):
-        """ searchSip :
+    def searchSips(self, args):
+        """ searchSips :
         Search for a specific SIP Correlator resource in the system by certain properties.
         Sample usage:
         """
@@ -3876,11 +3905,11 @@ class VisionWebApi(object):
         """
         return self._sendRequest('GET', '/api/recirculated_afm_resources')
 
-    def searchAfm(self, args):
-        """ searchAfm :
+    def searchAfms(self, args):
+        """ searchAfms :
         Search for a specific recirculated AFM resource in the system by certain properties.
         Sample usage:
-        >>> nto.searchAfm({'description': 'AFM Resources'})
+        >>> nto.searchAfms({'description': 'AFM Resources'})
         [{u'id': 96, u'name': u'L1-AFM'}]
         """
         return self._sendRequest('POST', '/api/recirculated_afm_resources/search', args)
@@ -4419,28 +4448,28 @@ class VisionWebApi(object):
         """
         return self._sendRequest('POST', '/api/actions/restart_recovery_appliance', {})
 
-    def searchSubscriberByFTeid(self, args):
-        """ searchSubscriberByFTeid:
+    def searchSubscribersByFTeid(self, args):
+        """ searchSubscribersByFTeid:
         Searches whether a given subscriber (that is identified by a TEID and an
         IPv4 or IPv6) has an active session and if so which port has been allocated
         to that subscriber's active session(s). If the given subscriber has an
         active session then it returns all the pairs of {source port groups,
         allocated tool port default name}.
         Sample usage:
-        gsc.searchSubscriberByFTeid({'subscriber_ip': '10.10.10.10', 'subscriber_ip_type': 'IPv4', 'subscriber_teid': '12345678'})
+        gsc.searchSubscribersByFTeid({'subscriber_ip': '10.10.10.10', 'subscriber_ip_type': 'IPv4', 'subscriber_teid': '12345678'})
         TBD
         """
         return self._sendRequest('POST', '/api/actions/search_subscriber_by_fteid', args)
 
-    def searchSubscriberByImsi(self, args):
-        """ searchSubscriberByImsi:
+    def searchSubscribersByImsi(self, args):
+        """ searchSubscribersByImsi:
         Searches whether a given subscriber (that is identified by IMSI) has an
         active session and if so which port has been allocated to that
         subscriber's active session(s). If the given subscriber has an active
         session then it returns all the pairs of {source port groups, allocated
         tool port default name}.
         Sample usage:
-        >>> gsc.searchSubscriberByImsi({'subscriber_imsi': '123456789012345'})
+        >>> gsc.searchSubscribersByImsi({'subscriber_imsi': '123456789012345'})
         {u'subscribers': [{u'subscriber_source_port_groups': [u'PG1', u'PG2', u'PG3', u'PG4'], u'subscriber_destination_tool_port': u'PC01'}]}
         """
         return self._sendRequest('POST', '/api/actions/search_subscriber_by_imsi', args)
