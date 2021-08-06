@@ -187,6 +187,22 @@
 #    - Renamed searchSubscriberByFTeid to searchSubscribersByFTeid
 #    - Renamed searchSubscriberByImsi to searchSubscribersByImsi
 #
+# June 11, 2021
+#    - Added Vision NPB v5.8.1 Changes:
+#        - Added method clearCtePort
+#
+# June 28, 2021
+#    - Added the GSC filters configuration methods
+#    - Added the GSC IMSI lists methods
+#
+# August 4, 2021
+#    - Added Vision NPB v5.9.0 Changes:
+#        - Added the IFC Dual Home Tools methods
+#    - Added the getTradeVisionEvents method
+#    - Added the getTradeVisionEventsValuesRanges method
+#    - Fixed the installCteDtsp method
+#    - Added the IFC custom icons methods
+#
 # COPYRIGHT 2019-2021 Keysight Technologies.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -333,7 +349,7 @@ class VisionWebApi(object):
             raise webAPIClientError(response.status)
         elif (response.status >= 500) and (response.status <= 599):
             raise webAPIServerError(response.status)
-        elif response.status != 200:
+        elif (response.status != 200) and (response.status != 204):
             raise webAPIError(response.status)
 
         data = response.data
@@ -864,6 +880,20 @@ class VisionWebApi(object):
         """
         args = {}
         return self._sendRequest('POST', '/api/actions/get_transceiver_info', args)
+
+    def getTradeVisionEvents(self):
+        """ getTradeVisionEvents :
+        This command is used to get TradeVision-only events from the server database.
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/actions/get_tv_events')
+
+    def getTradeVisionEventsValuesRanges(self):
+        """ getTradeVisionEventsValuesRanges :
+        This command is used to get TradeVision events from the server database.
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/actions/get_tv_events_value_range')
 
     def getNeighbors(self, args):
         """ getNeighbors :
@@ -1727,11 +1757,11 @@ class VisionWebApi(object):
         """
         return self._sendRequest('GET', '/api/bypass_connectors/' + str(bypass_id))
 
-    def getAllInlineBypasseConnectors(self):
-        """ getAllInlineBypasseConnectors :
+    def getAllInlineBypassConnectors(self):
+        """ getAllInlineBypassConnectors :
         Fetch a list containing the summaries for all the Inline Bypass Connectors in the system.
         Sample usage:
-        >>> nto.getAllInlineBypasseConnectors()
+        >>> nto.getAllInlineBypassConnectors()
         [{'id': 117, 'name': 'test bypass'}]
         """
         return self._sendRequest('GET', '/api/bypass_connectors')
@@ -1920,6 +1950,13 @@ class VisionWebApi(object):
         """
         return self._sendRequest('POST', '/api/cte_cluster', args)
 
+    def modifyCteCluster(self, resource, args):
+        """ modifyCteCapture :
+        Update the properties of the IFC cluster.
+        Sample usage:
+        """
+        return self._sendRequest('PUT', '/api/cte_cluster', args, False)
+
 
     # CTE Connections
 
@@ -1964,6 +2001,143 @@ class VisionWebApi(object):
         Sample usage:
         """
         return self._sendRequest('PUT', '/api/cte_connections/' + str(cte_id), args, False)
+
+
+    # IFC Custom Icoms
+
+    def createIfcIcon(self, args):
+        """ createIfcIcon:
+        Create a new IFC Custom Icon.
+        Sample usage:
+        """
+        description = ''
+        if 'description' in args:
+            description = args['description']
+
+        image = ''
+        if 'image' in args:
+            image = args['imge']
+
+        name = ''
+        if 'name' in args:
+            name = args['name']
+
+        boundary = "-----WebKitFormBoundary" + str(int(time.time())) + str(os.getpid())
+
+        buffer = bytearray()
+
+        # Set name
+        buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'\r\n')
+        buffer.extend(b'Content-Disposition: form-data; name="name"\r\n')
+        buffer.extend(b'Content-Type: text/plain\r\n')
+        buffer.extend(b'\r\n')
+        buffer.extend(bytearray(name, 'ascii'))
+        buffer.extend(b'\r\n')
+
+        # Set Description
+        buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'\r\n')
+        buffer.extend(b'Content-Disposition: form-data; name="description"\r\n')
+        buffer.extend(b'Content-Type: text/plain\r\n')
+        buffer.extend(b'\r\n')
+        buffer.extend(bytearray(description, 'ascii'))
+        buffer.extend(b'\r\n')
+
+        # Set creative contents part.
+        buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'\r\n')
+        buffer.extend(b'Content-Disposition: form-data; name="file"; filename=' + bytearray(image, 'ascii') + b'\r\n')
+        buffer.extend(b'Content-Type: application/octet-stream\r\n')
+        buffer.extend(b'\r\n')
+        # TODO: catch errors with opening file.
+        buffer.extend(open(image, 'rb').read())
+        buffer.extend(b'\r\n')
+
+        buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'--\r\n')
+
+        hdrs =  { 'Authentication' : self.token, 'Content-type' : 'multipart/form-data; boundary=' + boundary }
+        response = self.connection.urlopen('POST', '/api/cte_custom_icons', body=buffer, headers=hdrs)
+        #self._log (response.status, response.reason)
+        data = response.data
+        data = json.loads(data.decode('ascii'))
+
+        return data
+
+    def deleteIfcIcon(self, icon_id):
+        """ deleteIfcIcon :
+        Remove an IFC Custom Icon.
+        Sample usage:
+        """
+        return self._sendRequest('DELETE', '/api/cte_custom_icons/' + str(icon_id), None, False)
+
+    def getIfcIcon(self, icon_id):
+        """ getIfcIcon :
+        Fetch the properties of an IFC Custom Icon.
+        Samle usage:
+        """
+        return self._sendRequest('GET', '/api/cte_custom_icons/' + str(icon_id))
+
+    def getAllIfcIcons(self):
+        """ getAllIfcIcons :
+        Fetch a list containing the summaries for all IFC Custom Icons.
+        Sample usage:
+        """
+        return self._sendRequest('GET', '/api/cte_custom_icons')
+
+    def searchIfcIcons(self, args):
+        """ searchIfcIcons :
+        Search a specific IFC Custom Icon by certain properties.
+        """
+        return self._sendRequest('POST', '/api/cte_custom_icons/search', args)
+
+    def modifyIfcIcon(self, icon_id, args):
+        """ modifyIfcIcon :
+        Update the properties of an existing IFC Custom Icon.
+        """
+        return self._sendRequest('PUT', '/api/cte_custom_icons/' + str(icon_id), args, False)
+
+
+    # IFC Dual Home Tools
+
+    def createIfcDualHomeTool(self, args):
+        """ createIfcDualHomeTool :
+        Create a new IFC dual home tool in the system.
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/cte_dual_home_tools', args)
+
+    def deleteIfcDualHomeTool(self, dual_home_id):
+        """ deleteIfcDualHomeTool :
+        Remove an IFC dual home tool.
+        Sample usage:
+        """
+        return self._sendRequest('DELETE', '/api/cte_dual_home_tools/' + str(dual_home_id), None, False)
+
+    def getIfcDualHomeTool(self, dual_home_id):
+        """ getIfcDualHomeTool :
+        Fetch the properties of an IFC dual home tool.
+        Sample usage:
+        """
+        return self._sendRequest('GET', '/api/cte_dual_home_tools/' + str(dual_home_id))
+
+    def getAllIfcDualHomeTools(self):
+        """ getAllIfcDualHomeTools :
+        Fetch a list containing the summaries for all IFC dual home tools.
+        Sample usage:
+        """
+        return self._sendRequest('GET', '/api/cte_dual_home_tools')
+
+    def searchIfcDualHomes(self, args):
+        """ searchIfcDualHomes :
+        Search a specific IFC dual home tool by certain properties.
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/cte_dual_home_tools/search', args)
+
+    def modifyIfcDualHome(self, dual_home_id, args):
+        """ modifyIfcDualHome :
+        Update the properties of an existing IFC dual home tool.
+        Sample usage:
+        """
+        return self._sendRequest('PUT', '/api/cte_dual_home_tools/' + str(dual_home_id), args, False)
 
 
     # CTE Filters
@@ -2251,7 +2425,41 @@ class VisionWebApi(object):
         Install TradeVision DTSP to all the TradeVision boxes in the IFC.
         Sample usage:
         """
-        return self._sendRequest('POST', '/api/cte_operations/cte_install_dtsp', args)
+
+        file_item = ''
+        if 'file_item' in args:
+            file_item = args['file_item']
+
+        boundary = "-----WebKitFormBoundary" + str(int(time.time())) + str(os.getpid())
+
+        buffer = bytearray()
+
+        # Set param
+        buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'\r\n')
+        buffer.extend(b'Content-Disposition: form-data; name="param"\r\n')
+        buffer.extend(b'Content-Type: application/json\r\n')
+        buffer.extend(b'\r\n')
+        buffer.extend(bytearray(json.dumps(args), 'ascii'))
+        buffer.extend(b'\r\n')
+
+        # Set creative contents part.
+        buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'\r\n')
+        buffer.extend(b'Content-Disposition: form-data; name="file"; filename=' + bytearray(file_item, 'ascii') + b'\r\n')
+        buffer.extend(b'Content-Type: application/octet-stream\r\n')
+        buffer.extend(b'\r\n')
+        # TODO: catch errors with opening file.
+        buffer.extend(open(file_item, 'rb').read())
+        buffer.extend(b'\r\n')
+
+        buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'--\r\n')
+        buffer.extend(b'\r\n')
+
+        hdrs =  { 'Authentication' : self.token, 'Content-type' : 'multipart/form-data; boundary=' + boundary }
+        response = self.connection.urlopen('POST', '/api/cte_operations/cte_install_dtsp', body=buffer, headers=hdrs)
+        #self._log (response.status, response.reason)
+        data = response.data
+        
+        return data
 
     def interruptCteAnalysisEngineTraffic(self, args):
         """ interruptCteAnalysisEngineTraffic :
@@ -2360,6 +2568,14 @@ class VisionWebApi(object):
 
 
     # CTE Ports
+
+    def clearCtePort(self, cte_port):
+        """ clearCtePort :
+        Resets an IFC port to default configuration. No properties are required in the HTTP Body.
+
+        Sample usage:
+        """
+        return self._sendRequest('PUT', '/api/cte_ports/' + str(cte_port) + '/clear', None, False)
 
     def createCtePort(self, args):
         """ createCtePort :
@@ -2962,6 +3178,8 @@ class VisionWebApi(object):
         """ createHeartbeat :
         Create a new tool heartbeat in the system.
         Sample usage:
+        >>> nto.createHeartbeat({'name': 'Test'})
+        {'default_name': 'HB7', 'id': 353, 'name': 'Test'}
         """
         return self._sendRequest('POST', '/api/heartbeats', args)
 
@@ -2969,6 +3187,8 @@ class VisionWebApi(object):
         """ deleteHeartbeat :
         Remove an existing tool heartbeat from the system.
         Sample usage:
+        >>> nto.deleteHeartbeat('HB7')
+        b''
         """
         return self._sendRequest('DELETE', '/api/heartbeats/' + str(heartbeat_id), None, False)
 
@@ -2976,6 +3196,8 @@ class VisionWebApi(object):
         """ getHeartbeat :
         Fetch the properties of a tool heartbeat object.
         Sample usage:
+        >>> nto.getHeartbeat('IXIA ThreatARMOR')
+        {'created': None, 'default_name': 'HB1', 'description': 'A read-only default heartbeat format appropriate for use with IXIA ThreatARMOR devices', 'destination_mac': {'mac_address': '00-1B-6E-01-4F-28'}, 'history': [], 'id': 80, 'interval': 1000, 'is_default': True, 'misc': {'access_map': {'MODIFY_ACCESS_SETTINGS': {'access_settings': {'groups': [], 'policy': 'ALLOW_ALL'}, 'affecting_ports': {}, 'affecting_resource': {}, 'current_value': 'All users.', 'expression_text': 'All users.', 'operation_name': 'Modify', 'operation_phrase': 'modify', 'tooltip': 'Allow All', 'user_names': '', 'users_statement': 'Anyone can perform'}}, 'access_props': ['MODIFY_ACCESS_SETTINGS']}, 'mod_count': 0, 'modify_access_settings': {'groups': [], 'policy': 'ALLOW_ALL'}, 'name': 'IXIA ThreatARMOR', 'payload': {'hex_value': '86DD60000000003C3B402001480000000000000000000000000120014800000000000000000000000002000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F202122232425262728292A2B2C2D2E2F303132333435363738393A3B'}, 'retry_count': 3, 'source_mac': {'mac_address': '00-1B-6E-01-4F-27'}, 'timeout': 500, 'type': 'POSITIVE_HB', 'vlan_id': 4095, 'vlan_priority': 0}
         """
         return self._sendRequest('GET', '/api/heartbeats/' + str(heartbeat_id))
 
@@ -2983,6 +3205,8 @@ class VisionWebApi(object):
         """ getAllHeartbeats :
         Fetch a list containing the summaries for all the tool heartbeats in the system.
         Sample usage:
+        >>> nto.getAllHeartbeats()
+        [{'id': 80, 'name': 'IXIA ThreatARMOR'}, {'id': 81, 'name': 'Cisco FirePOWER'}, {'id': 82, 'name': 'FireEye NX'}, {'id': 83, 'name': 'Imperva WAF'}, {'id': 84, 'name': 'Trend Micro'}]
         """
         return self._sendRequest('GET', '/api/heartbeats')
 
@@ -2990,6 +3214,8 @@ class VisionWebApi(object):
         """ searchHeartbeats :
         Search for a specific tool heartbeat in the system by certain properties.
         Sample usage:
+        >>> nto.searchHeartbeats({'name': 'Trend Micro'})
+        [{'created': None, 'default_name': 'HB5', 'description': 'A read-only default heartbeat format appropriate for use with Trend Micro devices', 'destination_mac': {'mac_address': '00-1B-6E-01-4F-28'}, 'history': [], 'id': 84, 'interval': 1000, 'is_default': True, 'misc': {'access_map': {'MODIFY_ACCESS_SETTINGS': {'access_settings': {'groups': [], 'policy': 'ALLOW_ALL'}, 'affecting_ports': {}, 'affecting_resource': {}, 'current_value': 'All users.', 'expression_text': 'All users.', 'operation_name': 'Modify', 'operation_phrase': 'modify', 'tooltip': 'Allow All', 'user_names': '', 'users_statement': 'Anyone can perform'}}, 'access_props': ['MODIFY_ACCESS_SETTINGS']}, 'mod_count': 0, 'modify_access_settings': {'groups': [], 'policy': 'ALLOW_ALL'}, 'name': 'Trend Micro', 'payload': {'hex_value': '8B0000000000178C0000000000000000000000000005293D00D5A31081A6D0800000001900000010000E000F000000000000000000000020000E000F000000000000000000000030000E000F000000000000000000000001000E0010000000000000000000000002000E0010000000000000000000000003000E0010000000000000000000000004'}, 'retry_count': 3, 'source_mac': {'mac_address': '00-1B-6E-01-4F-27'}, 'timeout': 500, 'type': 'POSITIVE_HB', 'vlan_id': 4095, 'vlan_priority': 0}]
         """
         return self._sendRequest('POST', '/api/heartbeats/search', args)
 
@@ -2997,6 +3223,8 @@ class VisionWebApi(object):
         """ modifyHeartbeat:
         Update the properties of an existing tool heartbeat.
         Sample usage:
+        >>> nto.modifyHeartbeat('HB6', {'vlan_id': 300})
+        b''
         """
         return self._sendRequest('PUT', '/api/heartbeats/' + str(heartbeat_id), args, False)
 
@@ -4137,7 +4365,7 @@ class VisionWebApi(object):
         return self._sendRequest('POST', '/api/tool_resources/search', args)
 
     def modifyInlineToolResource(self, tool_resource_id, args):
-        """ modifyInlineToolConnector :
+        """ modifyInlineToolResource :
         Update the properties of an existing inline tool resource.
         Sample usage:
         >>> nto.modifyInlineToolResource('109', {'name': 'New Name'})
@@ -4688,13 +4916,14 @@ class VisionWebApi(object):
             return data
 
     ###################################################
-    # GSC CPP Resources
+    # GSC Filters
     ###################################################
     def getAllGscFilters(self):
         """ getAllGscFilters :
         Fetch a list containing the summaries for all the filters in the system.
         Sample usage:
         >>> nto.getAllGscFilters()
+        [{'id': 77, 'name': 'GSC1'}, {'id': 78, 'name': 'GSC2'}]
         """
         return self._sendRequest('GET', '/api/gsc_filters')
 
@@ -4768,14 +4997,166 @@ class VisionWebApi(object):
         #return self._sendRequest('GET', '/api/filters/' + filter + '?properties=' + properties)
 
     ###################################################
+    # GSC Filters Configuration
+    ###################################################
+    def getGscFilterConfig(self, filter_name):
+        """ getGscFilterConfig :
+        Find GSC filter configuration by GSC filter default name.
+        Sample usage:
+        >>> nto.getGscFilterConfig('GSC1')
+        {'filterDefaultName': 'GSC1', 'imsiLists': [], 'filterRuleList': [{'imsiConfig': {'useFilterImsiLists': False, 'wildcardValues': ['2222**********'], 'not': False}, 'ratConfig': {'values': []}, 'qciConfig': {'values': []}, 'uliConfig': {'values': []}, 'apnConfig': {'values': [], 'not': False}}]}
+        """
+        return self._sendRequest('GET', '/api/gsc-filters-config/' + filter_name)
+
+    def modifyGscFilterConfig(self, filter_name, args):
+        """ modifyGscFilterConfig :
+        Applies the GSC filter configuration to the GSC Filter referenced by the given ID.
+        Sample usage:
+        >>> nto.modifyGscFilterConfig('GSC1', {'imsiLists': [], 'filterRuleList': [{'imsiConfig': {'useFilterImsiLists': False, 'wildcardValues': ['2222**********'], 'not': False}, 'ratConfig': {'values': ["UTRAN"]}, 'qciConfig': {'values': []}, 'uliConfig': {'values': []}, 'apnConfig': {'values': [], 'not': False}}]})
+        b''
+        """
+        return self._sendRequest('PUT', '/api/gsc-filters-config/' + str(filter_name), args, False)
+
+    ###################################################
+    # GSC IMSI Lists
+    ###################################################
+    def getAllGscImsiLists(self):
+        """ getAllGscImsiLists :
+        Return a summary of the current IMSI lists.
+        Sample usage:
+        >>> nto.getAllGscImsiLists()
+        [{'id': 'f6aa896d-1c2e-43c8-b223-448396c2c398', 'name': 'Gold', 'size': 1, 'usedByFilters': []}]
+        """
+        return self._sendRequest('GET', '/api/gsc-imsi-lists')
+
+    def createGscImsiList(self):
+        """ createGscImsiList :
+        Create a new empty IMSI list with a default name.
+        Sample usage:
+        >>> nto.createGscImsiList()
+        {'id': '5e399236-d589-4c90-afd2-d537e74ac1d3', 'name': 'IMSI list 2021-06-28 13-41-00', 'size': 0, 'usedByFilters': []}
+        """
+        return self._sendRequest('POST', '/api/gsc-imsi-lists')
+
+    def getGscImsiList(self, imsi_list_id, start_index=1, wildcard_pattern=None):
+        """ getGscFilter :
+        Get a subset of values inside an IMSI list.
+        Returns a maximum of 1000 values based on the given filter options
+        Sample usage:
+        >>> nto.getGscImsiList('f6aa896d-1c2e-43c8-b223-448396c2c398', 2, "*555")
+        [{'index': 2, 'value': '111222333444555'}]
+        """
+        query = ""
+        if start_index:
+            if query:
+                query += '&'
+            query += 'startIndex=' + str(start_index)
+
+        if wildcard_pattern:
+            if query:
+                query += '&'
+            query += 'wildcardPattern=' + str(wildcard_pattern)
+
+
+        return self._sendRequest('GET', '/api/gsc-imsi-lists/' + str(imsi_list_id) + '?' + query)
+
+    def modifyGscImsiList(self, imsi_list_id, args):
+        """ modifyGscImsiList :
+        Updates parameters for the given IMSI list id.
+        Sample usage:
+        >>> nto.modifyGscImsiList('f6aa896d-1c2e-43c8-b223-448396c2c398', {'name': 'Silver'})
+        b''
+        """
+        return self._sendRequest('PUT', '/api/gsc-imsi-lists/' + str(imsi_list_id), args, False)
+
+    def importGscImsiList(self, imsi_list_id, file_name, upload_type='overwrite'):
+        """ importGscImsiList :
+        Append or overwrite an IMSI list with values from the given file.
+        File needs to be in text format, with one value per line.
+
+        Sample usage:
+        >>> nto.importGscImsiList('f6aa896d-1c2e-43c8-b223-448396c2c398', 'imsis.txt')
+        b'{\r\n  "success" : true,\r\n  "error" : ""\r\n}'
+        """
+
+        boundary = "-----WebKitFormBoundary" + str(int(time.time())) + str(os.getpid())
+
+        buffer = bytearray()
+
+        # Set creative contents part.
+        buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'\r\n')
+        buffer.extend(b'Content-Disposition: form-data; name="file"; filename=' + bytearray(file_name, 'ascii') + b'\r\n')
+        buffer.extend(b'Content-Type: application/octet-stream\r\n')
+        buffer.extend(b'\r\n')
+        # TODO: catch errors with opening file.
+        buffer.extend(open(file_name, 'rb').read())
+        buffer.extend(b'\r\n')
+
+        buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'--\r\n')
+
+        hdrs =  { 'Authentication' : self.token, 'Content-type' : 'multipart/form-data; boundary=' + boundary }
+        response = self.connection.urlopen('POST', '/api/gsc-imsi-lists/' + str(imsi_list_id) + '?uploadType=' + upload_type, body=buffer, headers=hdrs)
+        #self._log (response.status, response.reason)
+        data = response.data
+        #data = json.loads(data.decode('ascii'))
+
+        return data
+
+    def deleteGscImsiList(self, imsi_list_id):
+        """ deleteGscImsiList :
+        Delete the list corresponding to the given IMSI list id.
+        Sample usage:
+        >>> nto.deleteGscImsiList('288816cf-6e9f-47e8-9265-b4b17c4cfef7')
+        b''
+        """
+        return self._sendRequest('DELETE', '/api/gsc-imsi-lists/' + str(imsi_list_id), None, False)
+
+    def cloneGscImsiList(self, imsi_list_id):
+        """ cloneGscImsiList :
+        Create a new IMSI list with same values as the original imsi list.
+        Sample usage:
+        >>> nto.cloneGscImsiList('f6aa896d-1c2e-43c8-b223-448396c2c398')
+        {'id': '288816cf-6e9f-47e8-9265-b4b17c4cfef7', 'name': 'IMSI list 2021-06-28 15-04-19', 'size': 5, 'usedByFilters': []}
+        """
+        return self._sendRequest('POST', '/api/gsc-imsi-lists/' + str(imsi_list_id) + '/clone')
+
+    def exportGscImsiList(self, imsi_list_id, file_name):
+        """ exportGscImsiList :
+        Download a text file with all the IMSI list values, one value per line.
+        Sample usage:
+        >>> nto.exportGscImsiList('f6aa896d-1c2e-43c8-b223-448396c2c398', 'test.txt')
+        """
+
+        file = self._sendRequest('POST', '/api/gsc-imsi-lists/' + imsi_list_id + '/file', {}, False)
+        f = open(file_name, 'wb')
+        f.write(file)
+        f.close()
+
+    def deleteGscImsiListValues(self, imsi_list_id, args):
+        """ deleteGscImsiListValues :
+        Delete a set of IMSI values at the specified indices.
+        Sample usage:
+        >>> nto.deleteGscImsiListValues('f6aa896d-1c2e-43c8-b223-448396c2c398', [1])
+        b''
+        """
+        return self._sendRequest('DELETE', '/api/gsc-imsi-lists/' + imsi_list_id + '/subset', args, False)
+
+    def addGscImsiListValues(self, imsi_list_id, args, imsi_list_index=0):
+        """ addGscImsiListValues :
+        Insert a set of IMSI values at the specified index.
+        Sample usage:
+        >>> nto.addGscImsiListValues('f6aa896d-1c2e-43c8-b223-448396c2c398', ['777777777777777', '999999999999999'])
+        b''
+        """
+        return self._sendRequest('POST', '/api/gsc-imsi-lists/' + imsi_list_id + '/subset/' + str(imsi_list_index), args, False)
+
+    ###################################################
     # GSC CPP Resource
     ###################################################
     def getAllGscCppResources(self):
         """ getAllGscCppResources :
         Fetch a list containing the summaries for all the ATIP resources in the system.
         Sample usage:
-        >>> nto.getAllGscFilters()
-        [{'id': 77, 'name': 'GSC1'}, {'id': 78, 'name': 'GSC2'}]
         """
         return self._sendRequest('GET', '/api/gsc_cpp_resources')
 
@@ -4783,8 +5164,6 @@ class VisionWebApi(object):
         """ getGscCppResource :
         Fetch the properties of an ATIP resource.
         Sample usage:
-        >>> nto.getGscFilter('77')
-        {'channel_id': -1, 'created': {'caused_by': 'admin', 'details': None, 'time': 1617722510407, 'type': 'CREATE'}, 'default_name': 'GSC1', 'description': None, 'dest_port_group_list': [74], 'id': 77, 'misc': {'access_map': {}, 'access_props': []}, 'mod_count': 9, 'name': 'GSC1', 'number': 1, 'source_port_group_list': [75]}
         """
         query = ""
         if properties:
@@ -4796,8 +5175,6 @@ class VisionWebApi(object):
         """ modifyGscFilter :
         Update the properties of an existing ATIP resource.
         Sample usage:
-        >>> nto.modifyGscFilter('GSC3', {'description': 'The second GSC Session Filter'})
-        b''
         """
         return self._sendRequest('PUT', '/api/gsc_filters/' + str(resource_id), args, False)
 
@@ -4805,108 +5182,21 @@ class VisionWebApi(object):
         """ searchGscCppResources :
         Search for a specific ATIP resource in the system by certain properties.
         Sample usage:
-        >>> nto.searchGscFilters({'channel_id': 1})
-        [{'channel_id': 1, 'created': {'caused_by': 'admin', 'details': None, 'time': 1618421128534, 'type': 'CREATE'}, 'default_name': 'GSC3', 'description': 'The second GSC Session Filter', 'dest_port_group_list': [76], 'id': 92, 'misc': {'access_map': {}, 'access_props': []}, 'mod_count': 1, 'name': 'GSC3', 'number': 3, 'source_port_group_list': [75]}]
         """
         return self._sendRequest('POST', '/api/gsc_cpp_resources/search', args)
 
     def getGscCppResourceProperty(self, resource, property):
-        """ getGscFilterProperty :
+        """ getGscCppResourceProperty :
         Fetch a property of a GSC CPP resource object which is specified by its resource_id_or_name.
         Sample usage:
-        >>> nto.getGscFilterProperty('GSC3', 'channel_id')
-        1
         """
-        return self.getGscFilter(resource, property)[property]
+        return self.getGscCppResource(resource, property)[property]
         #return self._sendRequest('GET', '/api/gsc_cpp_resources/' + resource + '?properties=' + property)[property]
 
-    def getGscFilterProperties(self, filter, properties):
-        """ getGscFilterProperties :
+    def getGscCppResourceProperties(self, filter, properties):
+        """ getGscCppResourceProperties :
         Fetch a list of properties of a GSC CPP resource object which is specified by its resource_id_or_name.
         Sample usage:
-        >>> nto.getGscFilterProperties('GSC3', 'channel_id, description')
-        {'channel_id': 1, 'description': 'The second GSC Session Filter'}
         """
-        return self.getGscFilter(filter, properties)
+        return self.getGscCppResource(filter, properties)
         #return self._sendRequest('GET', '/api/gsc_cpp_resources/' + resource + '?properties=' + properties)
-
-    ###################################################
-    # GSC Filters
-    ###################################################
-    def getAllGscFilters(self):
-        """ getAllGscFilters :
-        Fetch a list containing the summaries for all the filters in the system.
-        Sample usage:
-        >>> nto.getAllGscFilters()
-        [{'id': 77, 'name': 'GSC1'}, {'id': 78, 'name': 'GSC2'}]
-        """
-        return self._sendRequest('GET', '/api/gsc_filters')
-
-    def getGscFilter(self, filter, properties=None):
-        """ getGscFilter :
-        Fetch the properties of a filter object.
-        Sample usage:
-        >>> nto.getGscFilter('77')
-        {'channel_id': -1, 'created': {'caused_by': 'admin', 'details': None, 'time': 1617722510407, 'type': 'CREATE'}, 'default_name': 'GSC1', 'description': None, 'dest_port_group_list': [74], 'id': 77, 'misc': {'access_map': {}, 'access_props': []}, 'mod_count': 9, 'name': 'GSC1', 'number': 1, 'source_port_group_list': [75]}
-        """
-        query = ""
-        if properties:
-            query = '?properties=' + ''.join(properties.split())
-
-        return self._sendRequest('GET', '/api/gsc_filters/' + str(filter) + query)
-
-    def createGscFilter(self, args, allowTemporayDataLoss=False):
-        """ createGscFilter :
-        Create a new filter in the system.
-        Sample usage:
-        >>> nto.createGscFilter({'dest_port_group_list': [76], 'source_port_group_list': [75]})
-        {'channel_id': 1, 'default_name': 'GSC3', 'id': 92, 'name': 'GSC3'}
-        """
-        return self._sendRequest('POST', '/api/gsc_filters?allowTemporayDataLoss=' + str(allowTemporayDataLoss), args)
-
-    def modifyGscFilter(self, filter_id, args, allowTemporayDataLoss=False):
-        """ modifyGscFilter :
-        Update the properties of an existing gsc filter.
-        Sample usage:
-        >>> nto.modifyGscFilter('GSC3', {'description': 'The second GSC Session Filter'})
-        b''
-        """
-        return self._sendRequest('PUT', '/api/gsc_filters/' + str(filter_id) + '?allowTemporayDataLoss=' + str(allowTemporayDataLoss), args, False)
-
-    def searchGscFilters(self, args):
-        """ searchGscFilters :
-        Search for a specific filter in the system by certain properties.
-        Sample usage:
-        >>> nto.searchGscFilters({'channel_id': 1})
-        [{'channel_id': 1, 'created': {'caused_by': 'admin', 'details': None, 'time': 1618421128534, 'type': 'CREATE'}, 'default_name': 'GSC3', 'description': 'The second GSC Session Filter', 'dest_port_group_list': [76], 'id': 92, 'misc': {'access_map': {}, 'access_props': []}, 'mod_count': 1, 'name': 'GSC3', 'number': 3, 'source_port_group_list': [75]}]
-        """
-        return self._sendRequest('POST', '/api/gsc_filters/search', args)
-
-    def deleteGscFilter(self, filter_id):
-        """ deleteGscFilter :
-        Remove a filter from the system.
-        Sample usage:
-        >>> nto.deleteGscFilter('GSC3')
-        Data=b'Not implemeted yet'
-        """
-        return self._sendRequest('DELETE', '/api/gsc_filters/' + str(filter_id), None, False)
-
-    def getGscFilterProperty(self, filter, property):
-        """ getGscFilterProperty :
-        Fetch a property of a filter object which is specified by its filter_id_or_name.
-        Sample usage:
-        >>> nto.getGscFilterProperty('GSC3', 'channel_id')
-        1
-        """
-        return self.getGscFilter(filter, property)[property]
-        #return self._sendRequest('GET', '/api/gsc_filters/' + filter + '?properties=' + property)[property]
-
-    def getGscFilterProperties(self, filter, properties):
-        """ getGscFilterProperties :
-        Fetch a list of properties of a filter object which is specified by its filter_id_or_name.
-        Sample usage:
-        >>> nto.getGscFilterProperties('GSC3', 'channel_id, description')
-        {'channel_id': 1, 'description': 'The second GSC Session Filter'}
-        """
-        return self.getGscFilter(filter, properties)
-        #return self._sendRequest('GET', '/api/gsc_filters/' + filter + '?properties=' + properties)
