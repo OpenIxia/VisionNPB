@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 
 ################################################################################
 #
@@ -52,7 +52,7 @@ import os
 from ksvisionlib import *
 
 def saveLogFiles(host_ip, host_name, port, username, password, timestamp):
-    nto = VisionWebApi(host_ip, username, password, port)
+    nto = VisionWebApi(host=host_ip, username=username, password=password, port=port, timeout=400)
     date = time.strftime("%Y-%m-%d")
 
     # Get the system type, GSC or NTO
@@ -65,7 +65,7 @@ def saveLogFiles(host_ip, host_name, port, username, password, timestamp):
     # If a directory doesn't exist for that host, create one
     if os.path.exists(host_name):
         if not os.path.isdir(host_name):
-            print host_name + ' is not a directory.'
+            print (host_name + ' is not a directory.')
             return
     else:
         os.makedirs(host_name)
@@ -73,7 +73,7 @@ def saveLogFiles(host_ip, host_name, port, username, password, timestamp):
     # If a directory doesn't exist for the date under the host directory, create one
     if os.path.exists(host_name + '/' + date):
         if not os.path.isdir(host_name + '/' + date):
-            print host_name + '/' + date + ' is not a directory.'
+            print (host_name + '/' + date + ' is not a directory.')
             return
     else:
         os.makedirs(host_name + '/' + date)
@@ -81,7 +81,7 @@ def saveLogFiles(host_ip, host_name, port, username, password, timestamp):
     # If the GSCLogs or NTOLogs directory doesn't exist, create it
     if os.path.exists(host_name + '/' + date + '/' + family_type + 'Logs'):
         if not os.path.isdir(host_name + '/' + date + '/' + family_type + 'Logs'):
-            print host_name + + '/' + date + '/' + family_type + 'Logs is not a directory.'
+            print (host_name + + '/' + date + '/' + family_type + 'Logs is not a directory.')
             return
     else:
         os.makedirs(host_name + '/' + date + '/' + family_type + 'Logs')
@@ -101,7 +101,7 @@ port = 8000
 try:
     opts, args = getopt.getopt(argv,"u:p:h:f:r:", ["username=", "password=", "host=", "file=", "port="])
 except getopt.GetoptError:
-    print 'get_logs.py -u <username> -p <password> [-h <hosts> | -f <host_file>] [-r <port>]'
+    print ('get_logs.py -u <username> -p <password> [-h <hosts> | -f <host_file>] [-r <port>]')
     sys.exit(2)
 for opt, arg in opts:
     if opt in ("-u", "--username"):
@@ -116,19 +116,19 @@ for opt, arg in opts:
         port = arg
 
 if username == '':
-    print 'get_logs.py -u <username> -p <password> [-h <hosts> | -f <host_file>] [-r <port>]'
+    print ('get_logs.py -u <username> -p <password> [-h <hosts> | -f <host_file>] [-r <port>]')
     sys.exit(2)
 
 if password == '':
-    print 'get_logs.py -u <username> -p <password> [-h <hosts> | -f <host_file>] [-r <port>]'
+    print ('get_logs.py -u <username> -p <password> [-h <hosts> | -f <host_file>] [-r <port>]')
     sys.exit(2)
 
 if (host == '') and (host_file == ''):
-    print 'get_logs.py -u <username> -p <password> [-h <hosts> | -f <host_file>] [-r <port>]'
+    print ('get_logs.py -u <username> -p <password> [-h <hosts> | -f <host_file>] [-r <port>]')
     sys.exit(2)
 
 if (port == ''):
-    print 'get_logs.py -u <username> -p <password> [-h <hosts> | -f <host_file>] [-r <port>]'
+    print ('get_logs.py -u <username> -p <password> [-h <hosts> | -f <host_file>] [-r <port>]')
     sys.exit(2)
 
 hosts_list = []
@@ -161,6 +161,6 @@ try:
         sys.stdout.write('.')
         sys.stdout.flush()
 except KeyboardInterrupt:
-    print "Ctrl-c received! Sending kill to threads..."
+    print ("Ctrl-c received! Sending kill to threads...")
     sys.exit()
-print ""
+print ("")
