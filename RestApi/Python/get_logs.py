@@ -16,13 +16,15 @@
 #  February 8, 2019:
 #    - Updated copyright note.
 #    - Use the ksvisionlib library.
+#  October 18, 2021
+#    - Change the script to Python 3.
 #
 # Description:
 # This script will retrieve the logs from a NTO/GSC device.  The script
 # will collect the logs simultaneously from multiple hosts by creating
 # one thread per host.
 #
-# COPYRIGHT 2014-2019 Keysight Technologies.
+# COPYRIGHT 2014-2021 Keysight Technologies.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -51,42 +53,47 @@ import time
 import os
 from ksvisionlib import *
 
+CMD_SYNTAX = __file__ + " -u <username> -p <password> [-h <hosts> | -f <host_file>] [-r <port>]"
+
 def saveLogFiles(host_ip, host_name, port, username, password, timestamp):
     nto = VisionWebApi(host=host_ip, username=username, password=password, port=port, timeout=400)
     date = time.strftime("%Y-%m-%d")
 
     # Get the system type, GSC or NTO
     device_type = nto.getSystemProperty('type')
-    if device_type == '7433':
-        family_type = 'GSC'
+    if device_type == "7433":
+        family_type = "GSC"
     else:
-        family_type = 'NTO'
+        family_type = "NTO"
 
     # If a directory doesn't exist for that host, create one
-    if os.path.exists(host_name):
-        if not os.path.isdir(host_name):
-            print (host_name + ' is not a directory.')
+    path = host_name
+    if os.path.exists(path):
+        if not os.path.isdir(path):
+            print (f"{path} is not a directory.")
             return
     else:
         os.makedirs(host_name)
 
     # If a directory doesn't exist for the date under the host directory, create one
-    if os.path.exists(host_name + '/' + date):
-        if not os.path.isdir(host_name + '/' + date):
-            print (host_name + '/' + date + ' is not a directory.')
+    path = f"{path}/{date}"
+    if os.path.exists(path):
+        if not os.path.isdir(path):
+            print (f"{path} is not a directory.")
             return
     else:
         os.makedirs(host_name + '/' + date)
 
     # If the GSCLogs or NTOLogs directory doesn't exist, create it
-    if os.path.exists(host_name + '/' + date + '/' + family_type + 'Logs'):
-        if not os.path.isdir(host_name + '/' + date + '/' + family_type + 'Logs'):
-            print (host_name + + '/' + date + '/' + family_type + 'Logs is not a directory.')
+    path = f"{path}/{family_type}Logs"
+    if os.path.exists(path):
+        if not os.path.isdir(path):
+            print (f"{path} is not a directory.")
             return
     else:
-        os.makedirs(host_name + '/' + date + '/' + family_type + 'Logs')
+        os.makedirs(path)
 
-    file_name = host_name + '/' + date + '/' + family_type + 'Logs/' + host_name + '-' + timestamp + '-' + 'logs.zip'
+    file_name = f"{path}/{host_name}-{timestamp}-logs.zip"
     nto.saveLogs({'file_name': file_name})
 
    
@@ -101,7 +108,7 @@ port = 8000
 try:
     opts, args = getopt.getopt(argv,"u:p:h:f:r:", ["username=", "password=", "host=", "file=", "port="])
 except getopt.GetoptError:
-    print ('get_logs.py -u <username> -p <password> [-h <hosts> | -f <host_file>] [-r <port>]')
+    print (CMD_SYNTAX)
     sys.exit(2)
 for opt, arg in opts:
     if opt in ("-u", "--username"):
@@ -116,19 +123,19 @@ for opt, arg in opts:
         port = arg
 
 if username == '':
-    print ('get_logs.py -u <username> -p <password> [-h <hosts> | -f <host_file>] [-r <port>]')
+    print (CMD_SYNTAX)
     sys.exit(2)
 
 if password == '':
-    print ('get_logs.py -u <username> -p <password> [-h <hosts> | -f <host_file>] [-r <port>]')
+    print (CMD_SYNTAX)
     sys.exit(2)
 
 if (host == '') and (host_file == ''):
-    print ('get_logs.py -u <username> -p <password> [-h <hosts> | -f <host_file>] [-r <port>]')
+    print (CMD_SYNTAX)
     sys.exit(2)
 
 if (port == ''):
-    print ('get_logs.py -u <username> -p <password> [-h <hosts> | -f <host_file>] [-r <port>]')
+    print (CMD_SYNTAX)
     sys.exit(2)
 
 hosts_list = []
@@ -145,7 +152,7 @@ threads_list = []
 for host in hosts_list:
     host_ip = host[0]
     host_name = host[1]
-    timestamp = time.strftime('%Y-%m-%d-%H-%M-%S')
+    timestamp = time.strftime("%Y-%m-%d-%H-%M-%S")
     
     thread = threading.Thread(name=host, target=saveLogFiles, args=(host_ip, host_name, port, username, password, timestamp))
     threads_list.append(thread)
@@ -158,8 +165,7 @@ try:
     while threading.active_count() > 1:
         for thread in threads_list:
             thread.join(1)
-        sys.stdout.write('.')
-        sys.stdout.flush()
+        print (".", end = '', flush = True)
 except KeyboardInterrupt:
     print ("Ctrl-c received! Sending kill to threads...")
     sys.exit()
