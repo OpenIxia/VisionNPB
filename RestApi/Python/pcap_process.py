@@ -2,8 +2,8 @@
 
 #################################################################################
 #
-# File:   pcap_anonymize.py
-# Date:   October 21, 2021
+# File:   pcap_process.py
+# Date:   January 24, 2022
 # Author: Fred Mota (fred.mota@keysight.com)
 #
 # History:
@@ -12,7 +12,7 @@
 # This script will anonymized all the IMSIs included in all the GTPv1, GTPv2,
 # PFCP, and DIAMETER packets captured in a PCAP file.
 #
-# COPYRIGHT 2021 Keysight Technologies.
+# COPYRIGHT 2022 Keysight Technologies.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
