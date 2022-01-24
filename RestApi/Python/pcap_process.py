@@ -51,10 +51,12 @@ import math
 import random
 from itertools import chain
 import io
+import pprint
 
-CMD_SYNTAX = __file__ + " -i <input_file> -o <output_file>"
+CMD_SYNTAX = __file__ + " -i <input_file> -o <clean_file> -h <headers_file> -f <fragments_file>"
 FCS_LENGTH = 4
 FRAGMENT_TIMEOUT = 5 # in seconds
+FRAGMENT_TIMEOUT_ENABLEd = False
 
 # DIAMETER
 DIAMETER_AVP_SUBSCRIPION_ID         = 443
@@ -119,7 +121,7 @@ def join_ranges(data, offset=0):
     return ranges_list
 
 class FragPkt(object):
-    def __init__(self, timestamp, first, last, payload, mf):
+    def __init__(self, timestamp, pkt_no, first, last, payload, mf):
         self.__ranges = [(first, last)]
         self.__timestamp = timestamp
         self.__last_byte = None
@@ -130,14 +132,16 @@ class FragPkt(object):
         self.__buffer.seek(first)
         self.__buffer.write(payload)
 
+        self.fragments = [{"pkt_no": pkt_no, "first": first, "last": last}]
+
     def __str__(self):
-        return f"FragPkt(ranges={self.__ranges}, timestamp={self.__timestamp}, last_byte={self.__last_byte})"
+        return f"FragPkt(ranges={self.__ranges}, timestamp={self.__timestamp}, last_byte={self.__last_byte}, fragments={self.fragments})"
 
     def __repr__(self):
         return str(self)
 
-    def add_fragment(self, timestamp, first, last, payload, mf):
-        if (timestamp - self.__timestamp) > FRAGMENT_TIMEOUT:
+    def add_fragment(self, timestamp, pkt_no, first, last, payload, mf):
+        if FRAGMENT_TIMEOUT_ENABLEd and ((timestamp - self.__timestamp) > FRAGMENT_TIMEOUT):
             self.__init__(timestamp, first, last, payload, mf)
         else:
             if not mf:
@@ -148,6 +152,7 @@ class FragPkt(object):
 
             self.__buffer.seek(first)
             self.__buffer.write(payload)
+            self.fragments.append({"pkt_no": pkt_no, "first": first, "last": last})
 
     def fragment_completed(self):
         return self.__last_byte and len(self.__ranges) == 1 and self.__ranges[0][0] == 0 and self.__ranges[0][1] == self.__last_byte
@@ -201,7 +206,7 @@ class PcapRandId(object):
             return self.__id_dict[id]
 
 # Remove the payload
-def payload_stripping(pkt):
+def payload_stripping(pkt_no, pkt):
 
     # Find the last recognized layer and remove its payload
     for n in range (len(pkt.layers()), 0, -1):
@@ -213,7 +218,7 @@ def payload_stripping(pkt):
     return pkt
 
 # VxLAN Stripping
-def vxlan_stripping(pkt):
+def vxlan_stripping(pkt_no, pkt):
 
     if VXLAN in pkt:
         pkt = pkt.getlayer(Ether, 2)
@@ -224,10 +229,11 @@ def vxlan_stripping(pkt):
             pkt = pkt / Padding('\x00' * (60 - pkt_len))
 
         #print (f"Packet #{pkt_no}: removed the VxLAN header.")
-        return pkt
+
+    return pkt
 
 # MPLS L3 VPN Stripping
-def mpls_stripping(pkt):
+def mpls_stripping(pkt_no, pkt):
 
     if MPLS in pkt:
         # Find the first MPLS label and save the layer below it
@@ -254,9 +260,10 @@ def mpls_stripping(pkt):
                 pkt = pkt / Padding('\x00' * (60 - pkt_len))
 
             #print (f"Packet #{pkt_no}: removed the MPLS labels.")
-            return pkt
 
-def reassemble_pkt(pkt):
+    return pkt
+
+def reassemble_pkt(pkt_no, pkt, frag_list, file):
 
     # Find the first IPv4 or IPv6 header
     for n in range (0, len(pkt.layers())):
@@ -277,9 +284,9 @@ def reassemble_pkt(pkt):
 
                 # Save the fragment to the fragment dictionary
                 if layer.id in frag_list:
-                    frag_list[layer.id].add_fragment(timestamp=timestamp, first=offset, last=offset+length-1, payload=payload, mf=mf)
+                    frag_list[layer.id].add_fragment(timestamp=timestamp, pkt_no=pkt_no, first=offset, last=offset+length-1, payload=payload, mf=mf)
                 else:
-                    frag_list[layer.id] = FragPkt(timestamp=timestamp, first=offset, last=offset+length-1, payload=payload, mf=mf)
+                    frag_list[layer.id] = FragPkt(timestamp=timestamp, pkt_no=pkt_no, first=offset, last=offset+length-1, payload=payload, mf=mf)
 
                 # If all fragments have been received, save the complete reassembled packet
                 if frag_list[layer.id].fragment_completed():
@@ -297,6 +304,7 @@ def reassemble_pkt(pkt):
                     pkt.time = timestamp
 
                     # Remove the fragments from the fragment dictionary
+                    print (f"Completed packet #{pkt_no}, ID=0x{layer.id:04x}, Fragments={frag_list[layer.id].fragments}", file=file)
                     del frag_list[layer.id]
 
                     # Return the reassembled IPv4 packet
@@ -335,9 +343,9 @@ def reassemble_pkt(pkt):
 
                 # Save the fragment to the fragment dictionary
                 if frag_layer.id in frag_list:
-                    frag_list[frag_layer.id].add_fragment(timestamp=timestamp, first=offset, last=offset+length-1, payload=payload, mf=frag_layer.m)
+                    frag_list[frag_layer.id].add_fragment(timestamp=timestamp, pkt_no=pkt_no, first=offset, last=offset+length-1, payload=payload, mf=frag_layer.m)
                 else:
-                    frag_list[frag_layer.id] = FragPkt(timestamp=timestamp, first=offset, last=offset+length-1, payload=payload, mf=frag_layer.m)
+                    frag_list[frag_layer.id] = FragPkt(timestamp=timestamp, pkt_no=pkt_no, first=offset, last=offset+length-1, payload=payload, mf=frag_layer.m)
 
                 # If all fragments have been received, save the complete reassembled packet
                 if frag_list[frag_layer.id].fragment_completed():
@@ -359,6 +367,7 @@ def reassemble_pkt(pkt):
                     pkt.time = timestamp
 
                     # Remove the fragments from the fragment dictionary
+                    print (f"Completed packet #{pkt_no}, ID=0x{frag_layer.id:08x}, Fragments={frag_list[frag_layer.id].fragments}", file=file)
                     del frag_list[frag_layer.id]
 
                     # Return the reassembled IPv6 packet
@@ -370,7 +379,7 @@ def reassemble_pkt(pkt):
             else:
                 return pkt
 
-def anonymize_pkt (pkt):
+def anonymize_pkt (pkt_no, pkt, rand_imsi, rand_imei, rand_msisdn):
     # Get and check the included FCS
     #pkt_has_fcs = False
     if Padding in pkt and len(pkt[Padding].load) >= FCS_LENGTH:
@@ -382,18 +391,8 @@ def anonymize_pkt (pkt):
             padding[:-FCS_LENGTH] = b'\x00\x00\x00\x00'
             pkt[Padding].load = padding
 
-    # Fragmented packet - not 1st fragment
-    if (((IP in pkt) and pkt[IP].frag) or
-        ((IPv6ExtHdrFragment in pkt) and pkt[IPv6ExtHdrFragment].offset)):
-        for n in range (len(pkt.layers()), 0, -1):
-            current_layer = pkt[n - 1]
-            if any(header in current_layer for header in PAYLOAD_LAYERS_LIST):
-                current_layer.remove_payload()
-                print (f"Packet #{pkt_no} Not first fragment, removing the payload.")
-                break
-
     # GTP-C Version 1
-    elif gtp.GTPHeader in pkt:
+    if gtp.GTPHeader in pkt:
         msg_type = pkt[gtp.GTPHeader].gtp_type
 
         # Anonymize the IMSI
@@ -556,6 +555,16 @@ def anonymize_pkt (pkt):
             layer_number += 1
             layer = pkt.getlayer('DiamG', layer_number)
                 
+    # Fragmented packet - not 1st fragment
+    elif (((IP in pkt) and pkt[IP].frag) or
+        ((IPv6ExtHdrFragment in pkt) and pkt[IPv6ExtHdrFragment].offset)):
+        for n in range (len(pkt.layers()), 0, -1):
+            current_layer = pkt[n - 1]
+            if any(header in current_layer for header in PAYLOAD_LAYERS_LIST):
+                current_layer.remove_payload()
+                print (f"Packet #{pkt_no} Not first fragment, removing the payload.")
+                break
+
     # Update the FCS
     #if pkt_has_fcs:
     #    computed_fcs = binascii.crc32(bytes(pkt)[:-FCS_LENGTH])
@@ -563,6 +572,7 @@ def anonymize_pkt (pkt):
     #    pkt[Padding].load = padding
 
     return pkt
+
 
 # Main program
 def main():
@@ -574,10 +584,12 @@ def main():
 
     argv = sys.argv[1:]
     in_file = ''
-    out_file = ''
+    out_file_clean = ''
+    out_file_headers = ''
+    out_file_fragments = ''
 
     try:
-        opts, args = getopt.getopt(argv, "i:o:", ["input_file=, output_file="])
+        opts, args = getopt.getopt(argv, "i:o:h:f:", ["input_file=, clean_file=, headers_file=, fragments_file"])
     except getopt.GetoptError:
         print (CMD_SYNTAX)
         sys.exit(2)
@@ -585,14 +597,26 @@ def main():
     for opt, arg in opts:
         if opt in ("-i", "--input_file"):
             in_file = arg
-        elif opt in ("-o", "--output_file"):
-            out_file = arg
+        elif opt in ("-o", "--clean_file"):
+            out_file_clean = arg
+        elif opt in ("-h", "--headers_file"):
+            out_file_headers = arg
+        elif opt in ("-f", "--fragments_file"):
+            out_file_fragments = arg
 
     if in_file == '':
         print (CMD_SYNTAX)
         sys.exit(2)
 
-    if out_file == '':
+    if out_file_clean == '':
+        print (CMD_SYNTAX)
+        sys.exit(2)
+
+    if out_file_headers == '':
+        print (CMD_SYNTAX)
+        sys.exit(2)
+
+    if out_file_fragments == '':
         print (CMD_SYNTAX)
         sys.exit(2)
 
@@ -601,38 +625,46 @@ def main():
 
     # Do some needed updates to the gto and gtp_v2 contributions
     gtp_contrib_ext.gtp_contrib_mod()
-    
-    frag_list = {}
 
+    in_pcap = PcapReader(in_file)
+    out_headers_pcap = PcapWriter(out_file_headers)
+    out_clean_pcap = PcapWriter(out_file_clean)
+    out_fragments_txt = open(out_file_fragments, 'w')
+
+    frag_list = {}
     rand_imsi = PcapRandId(6)
     rand_imei = PcapRandId(6)
     rand_msisdn = PcapRandId(4)
 
-    in_pcap = PcapReader(in_file)
-    out_hdrs_pcap = PcapWriter(out_file + "_hrds")
-    out_clean_pcap = PcapWriter(out_file + "_clean")
-
     for pkt_no, pkt in enumerate(in_pcap, start = 1):
 
         # Save the headers of the packet (no payload)
-        headers = pkt
-        headers = payload_stripping(headers)
-        out_hdrs_pcap.write(headers)
+        pkt_headers = Ether(pkt.build())
+        pkt_headers = payload_stripping(pkt_no, pkt_headers)
+        out_headers_pcap.write(pkt_headers)
 
         # Remove the VXLAN header
-        pkt = vxlan_stripping(pkt)
+        pkt = vxlan_stripping(pkt_no, pkt)
 
         # Remove the MPLS labels
-        pkt = mpls_stripping(pkt)
+        pkt = mpls_stripping(pkt_no, pkt)
 
         # Only reassemble PFCP packets
-        pkt = reassemble_pkt(pkt)
+        pkt = reassemble_pkt(pkt_no, pkt, frag_list, out_fragments_txt)
         if pkt:
             # Anonymize the packet
-            pkt = anonymize_pkt(pkt)
+            pkt = anonymize_pkt(pkt_no, pkt, rand_imsi, rand_imei, rand_msisdn)
 
             # Write the packet
             out_clean_pcap.write(pkt)
+
+    # Report incompleted fragments
+    print("Incomplete fragments:", file=out_fragments_txt)
+    pprint.pprint(frag_list, out_fragments_txt)
+    
+    in_pcap.close()
+    out_headers_pcap.close()
+    out_clean_pcap.close()
 
 if __name__ == "__main__":
     main()
