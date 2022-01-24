@@ -1,4 +1,4 @@
-#################################################################################
+1#################################################################################
 #
 # File:   ksvisionlib.py
 # Date:   May 9, 2019
@@ -203,7 +203,14 @@
 #    - Fixed the installCteDtsp method
 #    - Added the IFC custom icons methods
 #
-# COPYRIGHT 2019-2021 Keysight Technologies.
+# November 8, 2021
+#    - No changes for v5.9.1 and v5.10.0
+#
+# January 24, 2022
+#    - No changes for v5.10.1
+#    - Added the getLogs method
+#
+# COPYRIGHT 2019-2022 Keysight Technologies.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -1337,6 +1344,20 @@ class VisionWebApi(object):
         {u'message': u'Software revert requested. The system will be restarted. Visit the 7300 launch page in your browser to obtain the reverted client software.'}
         """
         return self._sendRequest('POST', '/api/actions/revert_software', None)
+
+    def getLogs(self, args):
+        """ getLogs :
+        Get the current system log files for subsequent delivery to Anue Support.
+        Sample usage:
+        >>> nto.getLogs({"file_name": "Vision_X_logs.zip"})
+        b'PK\x03\x04 ...'
+        """
+
+        file_name = ''
+        if 'file_name' in args:
+            file_name = args['file_name']
+
+        return self._sendRequest('POST', '/api/actions/save_logs', args, False)
 
     def saveLogs(self, args):
         """ saveLogs :
