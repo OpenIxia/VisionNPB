@@ -12,7 +12,7 @@
 #    - Use the ksvisionlib library.
 #
 # Description:
-# This script xports the current configuration of an NTO or GSC device
+# This script exports the current configuration of an NTO or GSC device
 # to a .ata file.
 # The script exports the configuration of several hosts simultaneously to
 # multiple files by creating one thread per host.
