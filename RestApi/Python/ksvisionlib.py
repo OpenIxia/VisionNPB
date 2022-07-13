@@ -3347,7 +3347,7 @@ class VisionWebApi(object):
         Reset to factory default a specific kubernetes node from the Mako card.
         Sample usage:
         """
-        return self._sendRequest('POST', '/api/kubernetes_nodes/' + str(kubernetes_nodes_id) + '/reset_factory', False)
+        return self._sendRequest('POST', '/api/kubernetes_nodes/' + str(kubernetes_nodes_id) + '/reset_factory', None, False)
 
     ###################################################
     # Line Boards
