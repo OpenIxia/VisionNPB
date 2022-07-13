@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 
 ################################################################################
 #
@@ -10,6 +10,9 @@
 #  February 8, 2019:
 #    - Updated copyright note.
 #    - Use the ksvisionlib library.
+#
+#  July 13, 2022:
+#    - Change the script to Python 3.
 #
 # Description:
 # This script creates 2^n filters, from 0 to 2^n-1.  Where the 0th filter
@@ -98,7 +101,7 @@ port = '8000'
 try:
     opts, args = getopt.getopt(argv,"u:p:h:l:o:v:r:", ["username=", "password=", "host=", "length=", "offset=", "version=", "port="])
 except getopt.GetoptError:
-    print '0mkfilters.py -u <username> -p <password> -h <host> -l <length> -o <offset> -v <version> [-r <port>]'
+    print ('0mkfilters.py -u <username> -p <password> -h <host> -l <length> -o <offset> -v <version> [-r <port>]')
     sys.exit(2)
 for opt, arg in opts:
     if opt in ("-u", "--username"):
@@ -117,27 +120,27 @@ for opt, arg in opts:
         port = arg
 
 if username == '':
-    print '1mkfilters.py -u <username> -p <password> -h <host> -l <length> -o <offset> -v <version> [-r <port>]'
+    print ('1mkfilters.py -u <username> -p <password> -h <host> -l <length> -o <offset> -v <version> [-r <port>]')
     sys.exit(2)
 
 if password == '':
-    print '2mkfilters.py -u <username> -p <password> -h <host> -l <length> -o <offset> -v <version> [-r <port>]'
+    print ('2mkfilters.py -u <username> -p <password> -h <host> -l <length> -o <offset> -v <version> [-r <port>]')
     sys.exit(2)
 
 if (host == ''):
-    print '3mkfilters.py -u <username> -p <password> -h <host> -l <length> -o <offset> -v <version> [-r <port>]'
+    print ('3mkfilters.py -u <username> -p <password> -h <host> -l <length> -o <offset> -v <version> [-r <port>]')
     sys.exit(2)
 
 if length == '':
-    print '4mkfilters.py -u <username> -p <password> -h <host> -l <length> -o <offset> -v <version> [-r <port>]'
+    print ('4mkfilters.py -u <username> -p <password> -h <host> -l <length> -o <offset> -v <version> [-r <port>]')
     sys.exit(2)
 
 if offset == '':
-    print '5mkfilters.py -u <username> -p <password> -h <host> -l <length> -o <offset> -v <version> [-r <port>]'
+    print ('5mkfilters.py -u <username> -p <password> -h <host> -l <length> -o <offset> -v <version> [-r <port>]')
     sys.exit(2)
 
 if version == '':
-    print '6mkfilters.py -u <username> -p <password> -h <host> -l <length> -o <offset> -v <version> [-r <port>]'
+    print ('6mkfilters.py -u <username> -p <password> -h <host> -l <length> -o <offset> -v <version> [-r <port>]')
     sys.exit(2)
 
 

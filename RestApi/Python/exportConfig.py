@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 
 ################################################################################
 #
@@ -10,6 +10,9 @@
 #  February 8, 2019:
 #    - Updated copyright note.
 #    - Use the ksvisionlib library.
+#
+#  July 13, 2022:
+#    - Change the script to Python 3.
 #
 # Description:
 # This script exports the current configuration of an NTO or GSC device
@@ -63,7 +66,7 @@ port = 8000
 try:
     opts, args = getopt.getopt(argv,"u:p:h:f:r:", ["username=", "password=", "host=", "hosts_file=", "port="])
 except getopt.GetoptError:
-    print 'import_config.py -u <username> -p <password> [-h <host> | -f <host_file>] [-r port]'
+    print ('import_config.py -u <username> -p <password> [-h <host> | -f <host_file>] [-r port]')
     sys.exit(2)
 for opt, arg in opts:
     if opt in ("-u", "--username"):
@@ -80,15 +83,15 @@ for opt, arg in opts:
         config_file = arg
 
 if username == '':
-    print 'exportConfig.py -u <username> -p <password> [-h <host> | -f <host_file>] [-r port]'
+    print ('exportConfig.py -u <username> -p <password> [-h <host> | -f <host_file>] [-r port]')
     sys.exit(2)
 
 if password == '':
-    print 'exportConfig.py -u <username> -p <password> [-h <host> | -f <host_file>] [-r port]'
+    print ('exportConfig.py -u <username> -p <password> [-h <host> | -f <host_file>] [-r port]')
     sys.exit(2)
 
 if (host == '') and (hosts_file == ''):
-    print 'exportConfig.py -u <username> -p <password> [-h <host> | -f <host_file>] [-r port]'
+    print ('exportConfig.py -u <username> -p <password> [-h <host> | -f <host_file>] [-r port]')
     sys.exit(2)
 
 timestamp = time.strftime('%Y-%m-%d-%H-%M-%S')
@@ -122,6 +125,6 @@ try:
         sys.stdout.write('.')
         sys.stdout.flush()
 except KeyboardInterrupt:
-    print "Ctrl-c received! Sending kill to threads..."
+    print ("Ctrl-c received! Sending kill to threads...")
     sys.exit()
-print ""
+print ("")
