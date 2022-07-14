@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 
 #################################################################################
 #
@@ -10,6 +10,9 @@
 #  February 8, 2019:
 #    - Updated copyright note.
 #    - Use the ksvisionlib library.
+#
+#  July 13, 2022:
+#    - Change the script to Python 3.
 #
 # Description:
 # This script will import a configuration (.ata) file to an NTO or an GSC
@@ -62,7 +65,7 @@ port = 8000
 try:
     opts, args = getopt.getopt(argv,"u:p:h:f:r:c:", ["username=", "password=", "host=", "hosts_file=", "port=", "config="])
 except getopt.GetoptError:
-    print 'importConfig.py -u <username> -p <password> -c <config_file> [-h <host> | -f <host_file>] [-r port]'
+    print ('importConfig.py -u <username> -p <password> -c <config_file> [-h <host> | -f <host_file>] [-r port]')
     sys.exit(2)
 for opt, arg in opts:
     if opt in ("-u", "--username"):
@@ -79,19 +82,19 @@ for opt, arg in opts:
         config_file = arg
 
 if username == '':
-    print 'importConfig.py -u <username> -p <password> -c <config_file> [-h <host> | -f <host_file>] [-r port]'
+    print ('importConfig.py -u <username> -p <password> -c <config_file> [-h <host> | -f <host_file>] [-r port]')
     sys.exit(2)
 
 if password == '':
-    print 'importConfig.py -u <username> -p <password> -c <config_file> [-h <host> | -f <host_file>] [-r port]'
+    print ('importConfig.py -u <username> -p <password> -c <config_file> [-h <host> | -f <host_file>] [-r port]')
     sys.exit(2)
 
 if (host == '') and (hosts_file == ''):
-    print 'importConfig.py -u <username> -p <password> -c <config_file> [-h <host> | -f <host_file>] [-r port]'
+    print ('importConfig.py -u <username> -p <password> -c <config_file> [-h <host> | -f <host_file>] [-r port]')
     sys.exit(2)
 
 if config_file == '':
-    print 'importConfig.py -u <username> -p <password> -c <config_file> [-h <host> | -f <host_file>] [-r port]'
+    print ('importConfig.py -u <username> -p <password> -c <config_file> [-h <host> | -f <host_file>] [-r port]')
     sys.exit(2)
 
 hosts_list = []
@@ -123,6 +126,6 @@ try:
         sys.stdout.write('.')
         sys.stdout.flush()
 except KeyboardInterrupt:
-    print "Ctrl-c received! Sending kill to threads..."
+    print ("Ctrl-c received! Sending kill to threads...")
     sys.exit()
-print ""
+print ("")

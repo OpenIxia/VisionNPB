@@ -210,6 +210,9 @@
 #    - No changes for v5.10.1
 #    - Added the getLogs method
 #
+# July 13, 2022
+#    - No changes for v5.11.0 and v5.11.1
+#
 # COPYRIGHT 2019-2022 Keysight Technologies.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -3344,7 +3347,7 @@ class VisionWebApi(object):
         Reset to factory default a specific kubernetes node from the Mako card.
         Sample usage:
         """
-        return self._sendRequest('POST', '/api/kubernetes_nodes/' + str(kubernetes_nodes_id) + '/reset_factory', args, False)
+        return self._sendRequest('POST', '/api/kubernetes_nodes/' + str(kubernetes_nodes_id) + '/reset_factory', None, False)
 
     ###################################################
     # Line Boards
