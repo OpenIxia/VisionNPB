@@ -1,4 +1,4 @@
-1#################################################################################
+#################################################################################
 #
 # File:   ksvisionlib.py
 # Date:   May 9, 2019
@@ -209,6 +209,35 @@
 # January 24, 2022
 #    - No changes for v5.10.1
 #    - Added the getLogs method
+#
+# April 6, 2022
+#    - No changes for v5.11.0
+#
+# June 13, 2022
+#    - Added Vision NPB v5.11.1 Changes:
+#        - Added the downloadServerLog method
+#        - Added the saveServerLogs method
+#    - Added all the Analysis Engine (AE) resource methods.
+#    - Renamed all the IFC Analysis Engine (AE) resource methods.
+#      This will break existing scripts that use these methods.
+#      Assuming these methods are not being used.
+#
+# June 23, 2022
+#    - Added Vision NPB v5.12.0 Changes:
+#        - Added the requestPortLicenseConfiguration method
+#    - Added the resetEventRateLimiterStatus method
+#    - Added the getFnoodLicensePublicInfo method
+#    - Added the interruptAeTraffic method
+#
+# September 23, 2022
+#    - Added Vision NPB v6.0.0 Changes:
+#        - Added the createInternalLoopbackPort method
+#        - Added the getOfflineToken method
+#        - Added the getPodsStatus method
+#        - Added the requestKvoCertificate method
+#        - Added the requestLocalLicenseAvailability method
+#        - Added the setKvoState method
+#        - Added the setGlobalNetStackTunnelTermination method
 #
 # COPYRIGHT 2019-2022 Keysight Technologies.
 #
@@ -538,7 +567,7 @@ class VisionWebApi(object):
         This method is allowed only on the following models: Vision One, E40, E100
         Sample usage:
         """
-        return self._sendRequest('POST', '/api/actions/change_filter_priority', args)
+        return self._sendRequest('POST', '/api/actions/change_filter_priority', args, False)
 
     def changePortSpeed(self, args):
         """ changePortSpeed :
@@ -628,12 +657,34 @@ class VisionWebApi(object):
         args = {}
         return self._sendRequest('POST', '/api/actions/clear_system', args)
 
+    def createInternalLoopbackPort(self):
+        """ createInternalLoopbackPort :
+        Creates an Internal Loopback Port.
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/actions/create_internal_loopback_port', args, False)
+
     def deployNetServiceInstance(self, args):
         """ deployNetServiceInstance :
         This command will deploy a netservice instance based on a default name.
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/deploy_net_service_instance', args, False)
+
+    def downloadServerLog(self, args):
+        """ downloadServerLog :
+        Used to download a system log file that was previously created using SaveServerLogsAction
+        for subsequent delivery to Keysight Support.
+        Sample usage:
+        """
+        file_name = ''
+        if 'file_name' in args:
+            file_name = args['file_name']
+
+        file = self._sendRequest('POST', '/api/actions/download_server_log', args, False)
+        f = open(file_name, 'wb')
+        f.write(file)
+        f.close()
 
     def drainNetServiceInstance(self, args):
         """ drainNetServiceInstance :
@@ -707,8 +758,7 @@ class VisionWebApi(object):
         *** TO BE TESTED ***
         >>> nto.fipsServerEncryptionStatus()
         """
-        args = {}
-        return self._sendRequest('POST', '/api/actions/fips_server_encryption_status', args)
+        return self._sendRequest('POST', '/api/actions/fips_server_encryption_status', None)
 
     def factoryReset(self):
         """ factoryReset :
@@ -872,10 +922,19 @@ class VisionWebApi(object):
 
     def getMemoryMetersPreview(self, args):
         """ getMemoryMetersPreview :
-        Accepts a memory allocation configuration and return what the filter memory meters would be for that allocation.
+        Accepts a memory allocation configuration and return what the filter memory
+        meters would be for that allocation.
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/get_memory_meters_preview', args)
+
+    def getOfflineToken(self, args):
+        """ getOfflineToken :
+        This action allows user to retrieve an offline token from the Keyclaok
+        server set in the KVO config.
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/actions/get_offline_token', args, False)
 
     def getTransceiverInfo(self):
         """ getTransceiverInfo :
@@ -954,6 +1013,13 @@ class VisionWebApi(object):
         {u'object_type': u'PORT'}
         """
         return self._sendRequest('POST', '/api/actions/get_object_type', args)
+
+    def getPodsStatus(self):
+        """ getPodsStatus :
+        Get pods status for all namespaces.
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/actions/get_pods_status', None)
 
     def getProperties(self, args):
         """ getProperties :
@@ -1225,6 +1291,14 @@ class VisionWebApi(object):
 
         return data
 
+    def interruptAeTraffic(self, args={}):
+        """ interruptAeTraffic :
+        Interrupt traffic for a given analysis engine (AE).
+        This will temporarily (10 sec) turn off traffic to AE.
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/actions/interrupt_ae_traffic', args)
+
     def mtuQuery(self, args={}):
         """ mtuQuery :
         This commands returns the port, linecard and AFM MTUs based on the board type.
@@ -1259,8 +1333,7 @@ class VisionWebApi(object):
         *** TO BE TESTED ***
         >>> nto.pullConfigFromHaPeer()
         """
-        args={}
-        return self._sendRequest('POST', '/api/actions/pull_config_from_ha_peer', args)
+        return self._sendRequest('POST', '/api/actions/pull_config_from_ha_peer', None)
 
     def pushConfigToHaPeer(self):
         """ pushConfigToHaPeer :
@@ -1269,8 +1342,14 @@ class VisionWebApi(object):
         *** TO BE TESTED ***
         >>> nto.pushConfigToHaPeer()
         """
-        args={}
-        return self._sendRequest('POST', '/api/actions/push_config_to_ha_peer', args)
+        return self._sendRequest('POST', '/api/actions/push_config_to_ha_peer', None)
+
+    def getFnoodLicensePublicInfo(self):
+        """ getFnoodLicensePublicInfo :
+        Read the publicly available information about the installed FNOOD license for the current system.
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/actions/get_fnood_license_public_info', None)
 
     def removeLicense(self):
         """ removeLicense :
@@ -1278,8 +1357,7 @@ class VisionWebApi(object):
         Sample usage:
         >>> nto.removeLicense()
         """
-        args={}
-        return self._sendRequest('POST', '/api/actions/remove_license', args)
+        return self._sendRequest('POST', '/api/actions/remove_license', None)
 
     def removePlugin(self, args):
         """ removePlugin :
@@ -1312,6 +1390,37 @@ class VisionWebApi(object):
         {u'message': u'System restart requested.'}
         """
         return self._sendRequest('POST', '/api/actions/remove_line_card', args)
+
+    def requestKvoCertificate(self, args):
+        """ requestKvoCertificate :
+        This action requests the certificate from the KVO at the address specified to be downloaded
+        to the NTO and stored there.
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/actions/request_kvo_certificate', args, False)
+
+    def requestLocalLicenseAvailability(self):
+        """ requestLocalLicenseAvailability :
+        This command will return a mapping of KSM feature names to installed counts for licenses
+        installed on the local license server.
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/actions/request_local_license_availability', None, False)
+
+    def requestPortLicenseConfiguration(self, args={}):
+        """ requestPortLicenseConfiguration :
+        This command will attempt to license and configure ports in the desired breakout configuration.
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/actions/request_port_license_configuration', args, False)
+
+    def resetEventRateLimiterStatus(self, args={}):
+        """ resetEventRateLimiterStatus :
+        Reset the event rate limiter status for the given event type.
+        Event type can be for gap, health or burst.
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/actions/reset_event_rate_limiter_status', args)
 
     def resetFactoryDefaultsVAM(self, args={}):
         """ resetFactoryDefaultsVAM :
@@ -1349,15 +1458,17 @@ class VisionWebApi(object):
         """ getLogs :
         Get the current system log files for subsequent delivery to Anue Support.
         Sample usage:
-        >>> nto.getLogs({"file_name": "Vision_X_logs.zip"})
+        >>> nto.getLogs()
         b'PK\x03\x04 ...'
         """
+        return self._sendRequest('POST', '/api/actions/save_logs', None, False)
 
-        file_name = ''
-        if 'file_name' in args:
-            file_name = args['file_name']
-
-        return self._sendRequest('POST', '/api/actions/save_logs', args, False)
+    def saveServerLog(self, args):
+        """ saveServerLog :
+        Save the current system log file(s) for subsequent download and delivery to Keysight Support.
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/actions/save_server_logs', args, False)
 
     def saveLogs(self, args):
         """ saveLogs :
@@ -1374,6 +1485,21 @@ class VisionWebApi(object):
         f = open(file_name, 'wb')
         f.write(file)
         f.close()
+
+    def downloadServerLog(self, args):
+        """ downloadServerLog :
+        Used to download a system log file that was previously created using
+        SaveServerLogsAction for subsequent delivery to Keysight Support.
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/actions/download_server_log', args, False)
+
+    def saveServerLogs(self, args):
+        """ saveServerLogs :
+        Save the current system log file(s) for subsequent download and delivery to Keysight Support.
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/actions/save_server_logs', args, False)
 
     def setHaSyncPort(self):
         """ setHaSyncPort :
@@ -1402,6 +1528,13 @@ class VisionWebApi(object):
         {u'message': u'The new IP configuration has been submitted.'}
         """
         return self._sendRequest('POST', '/api/actions/set_ip_config', args)
+
+    def setKvoState(self, args):
+        """ setKvoState :
+        Prepare system for entering full KVO mode.
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/actions/set_kvo_state', args, False)
 
     def setStackMode(self, args):
         """ setStackMode :
@@ -1806,49 +1939,136 @@ class VisionWebApi(object):
         return self._sendRequest('PUT', '/api/bypass_connectors/' + str(bypass_id), args, False)
 
     ####################################
+    # Analysis Engine (AE) Resources
+    ####################################
+    def captureAnalysisEngineInfo(self):
+        """ captureAnalysisEngineInfo :
+        Get capture info for all the AEs.
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/ae_resources/capture_info' , None, True)
+
+    def deleteAnalysisEnginePcapFiles(self, ae_id, args):
+        """ deleteAnalysisEnginePcapFiles :
+        Deletes one or more PCAP files from an Analysis Engine resource.
+        Sample usage:
+        """
+        return self._sendRequest('DELETE', '/api/ae_resources/' + str(ae_id) + '/delete_pcap_files', args, True)
+
+    def disableAnalysisEngine(self, ae_id):
+        """ disableAnalysisEngine :
+        Detaches an AE by disconnecting the attached filter.
+        Sample usage:
+        """
+        return self._sendRequest('PUT', '/api/ae_resources/' + str(ae_id) + '/disable', None, False)
+
+    def downloadAnalysisEnginePcapFiles(self, ae_id, args):
+        """ downloadAnalysisEnginePcapFiles :
+        Download one or more PCAP files for an AE resource.
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/ae_resources/' + str(ae_id) + '/download_pcap_files', args, False)
+
+    def enableAnalysisEngine(self, ae_id, args):
+        """ enableAnalysisEngine :
+        Attaches an AE to a filter.
+        Sample usage:
+        """
+        return self._sendRequest('PUT', '/api/ae_resources/' + str(ae_id) + '/enable', args, False)
+
+    def getAnalysisEngine(self, ae_id):
+        """ getAnalysisEngine :
+        Fetch the properties of an AE resource.
+        Sample usage:
+        """
+        return self._sendRequest('GET', '/api/ae_resources/' + str(ae_id))
+
+    def getAnalysisEnginePcapFileList(self, ae_id, args):
+        """ getAnalysisEnginePcapFileList :
+        Get a list of all PCAP files available for an Analysis Engine resource.
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/ae_resources/' + str(ae_id), args, True)
+
+    def getAllAnalysisEngines(self, args):
+        """ getAllAnalysisEngines :
+        Fetch a list containing the summaries for all the AE resources in the system.
+        Sample usage:
+        """
+        return self._sendRequest('GET', '/api/ae_resources', None, True)
+
+    def searchAnalysisEngines(self, args):
+        """ searchAnalysisEngines :
+        Search for a specific AE resource in the system by certain properties.
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/ae_resources', args, True)
+
+    def startAnalysisEngineCapture(self, ae_id):
+        """ startAnalysisEngineCapture :
+        Starts capture on AE resource to capture packets via the attached filter.
+        Sample usage:
+        """
+        return self._sendRequest('PUT', '/api/ae_resources' + str(ae_id) + '/start_capture', None, True)
+
+    def stopAnalysisEngineCapture(self, ae_id):
+        """ stopAnalysisEngineCapture :
+        Stops capturing packets on AE resource.
+        Sample usage:
+        """
+        return self._sendRequest('PUT', '/api/ae_resources' + str(ae_id) + '/stop_capture', None, True)
+
+    def modifyAnalysisEngine(self, args):
+        """ modifyAnalysisEngine :
+        Update the properties of an existing AE resource.
+        Sample usage:
+        """
+        return self._sendRequest('PUT', '/api/ae_resources' + str(ae_id), args, False)
+
+    ####################################
     # IFC Clustering (Control Tower Evolution)
     ####################################
 
     # IFC Analysis Engine Resources
 
-    def disableAnalysisEngine(self, ae_id):
-        """ disableAnalysisEngine :
+    def disableIfcAnalysisEngine(self, ae_id):
+        """ disableIfcAnalysisEngine :
         Detaches an IFC Analysis Engine resource from a filter.
         Sample usage:
         """
         args = {}
         return self._sendRequest('PUT', '/api/cte_ae_resources/' + str(ae_id) + '/disable', args, False)
 
-    def enableAnalysisEngine(self, ae_id, args):
-        """ enableAnalysisEngine :
+    def enableIfcAnalysisEngine(self, ae_id, args):
+        """ enableIfcAnalysisEngine :
         Attaches an IFC Analysis Engine resource to a filter.
         Sample usage:
         """
         return self._sendRequest('PUT', '/api/cte_ae_resources/' + str(ae_id) + '/enable', args)
 
-    def getAnalysisEngine(self, ae_id):
-        """ getAnalysisEngine :
+    def getIfcAnalysisEngine(self, ae_id):
+        """ getIfcAnalysisEngine :
         Fetch the properties of an IFC Analysis Engine resource.
         Sample usage:
         """
         return self._sendRequest('GET', '/api/cte_ae_resources/' + str(ae_id))
 
-    def getAllAnalysisEngines(self, args):
-        """ getAllAnalysisEngines :
+    def getAllIfcAnalysisEngines(self, args):
+        """ getAllIfcAnalysisEngines :
         Fetch a list containing the summaries for all IFC Analysis Engine resources.
         Sample usage:
         """
         return self._sendRequest('GET', '/api/cte_ae_resources')
 
-    def searchAnalysisEngines(self, args):
-        """ searchAnalysisEngines :
+    def searchIfcAnalysisEngines(self, args):
+        """ searchIfcAnalysisEngines :
         Search a specific IFC Analysis Engine resource by certain properties.
         Sample usage:
         """
         return self._sendRequest('POST', '/api/cte_ae_resources', args)
 
-    def modifyAnalysisEngine(self, ae_id, args):
-        """ modifyAnalysisEngine :
+    def modifyIfcAnalysisEngine(self, ae_id, args):
+        """ modifyIfcAnalysisEngine :
         Update the properties of an existing IFC Analysis Engine Resource.
         Sample usage:
         """
@@ -2519,6 +2739,13 @@ class VisionWebApi(object):
         Sample usage:
         """
         return self._sendRequest('POST', '/api/cte_operations/cte_reset_event_rate_limiter_status', args)
+
+    def setGlobalNetStackTunnelTermination(self, args):
+        """ setGlobalNetStackTunnelTermination :
+        Set global NetStack tunnel termination settings for a given node in the IFC cluster.
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/cte_operations/set_member_netstack_tunnel_termination_system_settings', args, False)
 
     def updateCteUpdateSingleIpAddress(self, args):
         """ updateCteUpdateSingleIpAddress :
