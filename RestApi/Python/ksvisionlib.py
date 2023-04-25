@@ -239,7 +239,22 @@
 #        - Added the setKvoState method
 #        - Added the setGlobalNetStackTunnelTermination method
 #
-# COPYRIGHT 2019-2022 Keysight Technologies.
+# April 24, 2023
+#    - Added Vision NPB v6.0.1 Changes:
+#        - added the setAfmLoadBalance method
+#        - Added all the IFC Generic Netservice Resources methods.
+#        - Added all the IFC PacketStack resources methods.
+#    - Added Vision NPB v6.1.0 Changes:
+#        - Added the getNetserviceConfig method
+#        - Added the saveNetserviceConfig method
+#        - Added the relearnAnalysisEngineMuxStreams method
+#    - Added Vision NPB v6.1.1 Changes:
+#        - Added method requestSystemLicenseCheckout
+#    - Added Vision NPB v6.2.0 Changes:
+#        - Added method getNetserviceConfigHashValue
+#        - Added method requestLicenseUsageInfo
+#
+# COPYRIGHT 2019-2023 Keysight Technologies.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -261,12 +276,13 @@
 #
 ################################################################################
 
-import urllib3
-import base64
-import json
-import time
-import os
 import sys
+import requests
+import re
+
+from requests.auth import HTTPBasicAuth
+from requests.adapters import HTTPAdapter, Retry
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
 class KeysightNpbExceptions(Exception):
     """Base class for exceptions in this module."""
@@ -297,59 +313,72 @@ class webAPIServerError(webAPIError):
     """Exception raised for API server errors."""
     pass
 
+class webAPIInvalidSwError(webAPIError):
+    """Exception raised for invalid software errors."""
+    pass
+
 class UnknownError(KeysightNpbExceptions):
     """Exception raised for unknown errors."""
     pass
 
 class VisionWebApi(object):
 
-    def __init__(self, host, username, password, port=8000, debug=False, log_file=None, timeout=30, retries=2, version=None):
-        #urllib3.disable_warnings()
-        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    def __init__(self, host, username, password, port=8000, debug=False, log_file=None, timeout=30, retries=2, verify=True, version=None):
+        if not verify:
+            requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
         self.host = host
         self.port = port
         self.user = username
         self.password = password
         self.__debug = debug
-        self.auth_b64 = ''
-        self.password_headers = ''
-        self.token_headers = ''
+        self.headers = {}
         self.version = version
-        self.connection = ''
+        self.sw_major_version = None
+        self.sw_minor_version = None
+        self.session = requests.Session()
         self.log_file = log_file
         self.__request_timeout = timeout
         self.__request_retries = retries
+        self.verify=verify
 
-        self.auth_b64 = base64.b64encode(bytearray(username + ":" + password, 'ascii')).decode('ascii')
-        self.password_headers = { 'Authorization' : 'Basic ' + self.auth_b64, 'Content-type' : 'application/json' }
+        self.methods_dic = {'DELETE': self.session.delete,
+                            'GET'   : self.session.get,
+                            'PATCH' : self.session.patch,
+                            'POST'  : self.session.post,
+                            'PUT'   : self.session.put}
 
-        #self.connection = urllib3.connectionpool.HTTPSConnectionPool(host, port=port, ssl_version='TLSv1_2')
-        self.connection = urllib3.connectionpool.HTTPSConnectionPool(host, port=port, cert_reqs='CERT_NONE', ca_certs=None, timeout=self.__request_timeout, retries=self.__request_retries)
+        self.authentication = HTTPBasicAuth(username, password)
+        retries = Retry(total = retries)
+        #        backoff_factor=0.1,
+        #        status_forcelist=[ 500, 502, 503, 504 ])
+        self.session.mount('https://', HTTPAdapter(max_retries=retries))
 
         try:
-            response = self.connection.urlopen('GET', '/api/auth', headers=self.password_headers)
-        except urllib3.exceptions.MaxRetryError:
+            response = self.session.get(f'https://{self.host}:{self.port}/auth', auth=self.authentication, verify=self.verify)
+            #response = self.session.get(f'https://{self.host}:{self.port}/auth', auth=self.authentication)
+        except requests.exceptions.ConnectTimeout:
             raise ConnectionError
         except:
             raise UnknownError
 
         if self.__debug:
-            self._log ("Status={:d}\n".format(response.status))
-            self._log ("Reason={:s}\n".format(response.reason))
-            self._log ("Headers={:}\n".format(response.headers))
-            self._log ("Data={:}\n".format(response.data))
+            self._log (f"Status={response.status_code}\n")
+            self._log (f"Reason={response.reason}\n")
+            self._log (f"Headers={response.headers}\n")
+            self._log (f"Data={response.text}\n")
 
         try:
-            self.token = response.headers['x-auth-token']
+            self.token = response.headers['X-Auth-Token']
         except:
             raise AuthenticationError
 
-        self.token_headers = { 'Authentication' : self.token, 'Content-type' : 'application/json' }
+        self.headers = {'Authentication' : self.token}
+        #self.headers = {'Authentication' : self.token, 'Content-type' : 'application/json'}
         if self.version:
-            self.token_headers.update({'Version': self.version})
+            self.headers.update({'Version': self.version})
 
     def __str__(self):
-        return "VisionWebApi(host='{:s}', port={:d}, user='{:s}', password='{:s}', auth64='{:s}', password_hdrs='{:s}', token_hdrs='{:s}', connection='{:s}', debug={:s}, log_file={:s}, timeout={:d}, retries={:d}, version={:s})".format(self.host, self.port,  self.user, self.password, self.auth_b64, str(self.password_headers), str(self.token_headers), str(self.connection), str(self.__debug), str(self.log_file), self.__request_timeout, self.__request_retries, str(self.version))
+        return f"VisionWebApi(host={self.host}, port={self.port}, user={self.user}, password={self.password}, headers={self.headers}, debug={self.__debug}, log_file={self.log_file}, timeout={self.__request_timeout}, retries={self.__request_retries}, version={self.version})"
 
     def __repr__(self):
         return str(self)
@@ -360,40 +389,57 @@ class VisionWebApi(object):
         if handle is not sys.stdout:
             handle.close()
 
-    def _sendRequest(self, httpMethod, url, args=None, decode=True):
+    def _sendRequest(self, httpMethod, url, args=None, decode=True, file_info=None):
         """ Send the request to the Web API server."""
 
         response = None
         if self.__debug:
-            self._log ("Sending a message to the server with parameters:\n")
-            self._log (" httpMethod={:s}\n".format(httpMethod))
-            self._log (" url={:s}\n".format(url))
-            self._log (" args={:s}\n".format(str(args)))
+            self._log (f"Sending a message to the server with parameters:\n")
+            self._log (f" httpMethod={httpMethod}\n")
+            self._log (f" url={url}\n")
+            self._log (f" args={args}\n")
+            self._log (f" files={file_info}\n")
 
-        args = json.dumps(args)
-        response = self.connection.urlopen(httpMethod, url, body=args, headers=self.token_headers)
+        response = self.methods_dic[httpMethod](f'https://{self.host}:{self.port}{url}',
+                                                timeout=self.__request_timeout,
+                                                json=args,
+                                                auth=self.authentication,
+                                                headers=self.headers,
+                                                verify=self.verify,
+                                                files=file_info)
 
         if self.__debug:
-            self._log ("Response:\n")
-            self._log (" Status={:d}\n".format(response.status))
-            self._log (" Reason={:s}\n".format(response.reason))
-            self._log (" Headers={:}\n".format(response.headers))
-            self._log (" Data={:}\n".format(response.data))
-            self._log (" decode={:}\n".format(decode))
+            self._log (f"Response:\n")
+            self._log (f" Status={response.status_code}\n")
+            self._log (f" Reason={response.text}\n")
+            self._log (f" Headers={response.headers}\n")
+            #self._log (f" Data={response.content}\n")
+            self._log (f" Decode={decode}\n")
 
-        if (response.status >= 400) and (response.status <= 499):
-            raise webAPIClientError(response.status)
-        elif (response.status >= 500) and (response.status <= 599):
-            raise webAPIServerError(response.status)
-        elif (response.status != 200) and (response.status != 204):
-            raise webAPIError(response.status)
+        if (response.status_code // 100 == 4):
+            raise webAPIClientError(response.status_code)
+        elif (response.status_code // 100 == 5):
+            raise webAPIServerError(response.status_code)
+        elif (response.status_code // 100 != 2):
+            raise webAPIError(response.status_code)
 
-        data = response.data
         if decode:
-            #data = json.loads(data.decode('ascii'))
-            data = json.loads(data.decode('iso-8859-1'))
+            data = response.json()
+        else:
+            data = response.content
 
         return data
+
+    def _set_sw_version(self):
+        if self.sw_major_version is None or self.sw_minor_version is None:
+            sw_version = self.getSystemProperty('software_version')
+            #m = re.search("(\d+)\.(\d+)\.\d+\.\d+-\d+-\d+-[0-9a-f]+", sw_version.lower())
+            m = re.search("^\D*(\d+)\.(\d+).*", sw_version.lower())
+            if m != None:
+                self.sw_major_version = int(m.group(1))
+                self.sw_minor_version = int(m.group(2))
+            else:
+                raise webAPIInvalidSwError
 
     @property
     def debug(self):
@@ -414,7 +460,6 @@ class VisionWebApi(object):
     def request_timeout(self, timeout):
         """ Set the request timeout """
         self.__request_timeout = timeout
-        self.connection.timeout = urllib3.Timeout(connect=timeout, read=timeout)
 
     @property
     def request_retries(self):
@@ -425,7 +470,10 @@ class VisionWebApi(object):
     def request_retries(self, retries):
         """ Set the request retries """
         self.__request_retries = retries
-        self.connection.retries = urllib3.Retry(connect=retries, read=retries)
+        retries = Retry(total = retries)
+        #        backoff_factor=0.1,
+        #        status_forcelist=[ 500, 502, 503, 504 ])
+        self.session.mount('https://', HTTPAdapter(max_retries=retries))
 
     def authenticate(self):
         """ authenticate :
@@ -433,15 +481,25 @@ class VisionWebApi(object):
         Sample usage:
         >>> nto.authenticate()
         """
-        response = self.connection.urlopen('GET', '/api/auth', headers=self.password_headers)
+
+        try:
+            response = self.session.get(f'https://{self.host}:{self.port}/auth', auth=self.authentication, verify=self.verify)
+            #response = self.session.get(f'https://{self.host}:{self.port}/auth', auth=self.authentication)
+        except requests.exceptions.ConnectTimeout:
+            raise ConnectionError
+        except:
+            raise UnknownError
 
         if self.__debug:
-            self._log ("Status={:d}\n".format(response.status))
-            self._log ("Reason={:s}\n".format(response.reason))
-            self._log ("Headers={:s}\n".format(response.headers))
-            self._log ("Data={:s}\n".format(response.data))
+            self._log (f"Status={response.status_code}\n")
+            self._log (f"Reason={response.reason}\n")
+            self._log (f"Headers={response.headers}\n")
+            self._log (f"Data={response.text}\n")
 
-        self.token_headers = { 'Authentication' : response.headers['x-auth-token'], 'Content-type' : 'application/json' }
+        try:
+            self.token = response.headers['X-Auth-Token']
+        except:
+            raise AuthenticationError
 
     ###################################################
     # Actions
@@ -476,76 +534,22 @@ class VisionWebApi(object):
                 return self._sendRequest('POST', '/api/actions/certificates', args)
 
             elif args['action'] == 'UPLOAD':
+
+                multipart_form_data = {}
+
                 # TLS/HTTPS
-                authentication = None
                 if 'authentication' in args:
-                    authentication = args['authentication']
-                    del args['authentication']
+                    multipart_form_data['authentication'] = (args['authentication'], open(args['authentication'], 'rb'))
 
                 # Syslog - Client
-                client = None
                 if 'client' in args:
-                    client = args['client']
-                    del args['client']
+                    multipart_form_data['client'] = (args['client'], open(args['client'], 'rb'))
 
                 # Syslog - Trsuted Root
-                trusted_root = None
                 if 'trusted_root' in args:
-                    trusted_root = args['trusted_root']
-                    del args['trusted_root']
+                    multipart_form_data['trusted_root'] = (args['trusted_root'], open(args['trusted_root'], 'rb'))
 
-                boundary = "-----WebKitFormBoundary" + str(int(time.time())) + str(os.getpid())
-
-                buffer = bytearray()
-
-                # Set param
-                buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'\r\n')
-                buffer.extend(b'Content-Disposition: form-data; name="param"\r\n')
-                buffer.extend(b'Content-Type: application/json\r\n')
-                buffer.extend(b'\r\n')
-                buffer.extend(bytearray(json.dumps(args), 'ascii'))
-                buffer.extend(b'\r\n')
-                buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'\r\n')
-
-                # Set creative contents part.
-                if authentication:
-                    buffer.extend(b'Content-Disposition: form-data; name="authentication"; filename=' + bytearray(authentication, 'ascii') + b'\r\n')
-                    buffer.extend(b'Content-Type: application/octet-stream\r\n')
-                    buffer.extend(b'\r\n')
-                    # TODO: catch errors with opening file.
-                    buffer.extend(open(authentication, 'rb').read())
-                    buffer.extend(b'\r\n')
-
-                    buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'--\r\n')
-
-                if client:
-                    buffer.extend(b'Content-Disposition: form-data; name="client"; filename=' + bytearray(client, 'ascii') + b'\r\n')
-                    buffer.extend(b'Content-Type: application/octet-stream\r\n')
-                    buffer.extend(b'\r\n')
-                    # TODO: catch errors with opening file.
-                    buffer.extend(open(client, 'rb').read())
-                    buffer.extend(b'\r\n')
-
-                    buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'--\r\n')
-
-                if trusted_root:
-                    buffer.extend(b'Content-Disposition: form-data; name="trusted_root"; filename=' + bytearray(trusted_root, 'ascii') + b'\r\n')
-                    buffer.extend(b'Content-Type: application/octet-stream\r\n')
-                    buffer.extend(b'\r\n')
-                    # TODO: catch errors with opening file.
-                    buffer.extend(open(trusted_root, 'rb').read())
-                    buffer.extend(b'\r\n')
-
-                    buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'--\r\n')
-
-                buffer.extend(b'\r\n')
-
-                hdrs =  { 'Authentication' : self.token, 'Content-type' : 'multipart/form-data; boundary=' + boundary }
-                response = self.connection.urlopen('POST', '/api/actions/certificates', body=buffer, headers=hdrs)
-                #self._log (response.status, response.reason)
-                data = response.data
-                
-                return data
+                return self._sendRequest('POST', '/api/actions/certificates', args, True, multipart_form_data)
 
     def changeRole(self):
         """ changeRole :
@@ -928,6 +932,20 @@ class VisionWebApi(object):
         """
         return self._sendRequest('POST', '/api/actions/get_memory_meters_preview', args)
 
+    def getNetserviceConfig(self, args):
+        """ getNetserviceConfig :
+        This command is used to get the configuration from a netservice.
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/actions/get_netservice_config', args)
+
+    def getNetserviceConfigHashValue(self, args):
+        """ getNetserviceConfigHashValue :
+        This command is used to get the hash of a configuration from a netservice.
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/actions/get_hash_of_netservice_config', args)
+
     def getOfflineToken(self, args):
         """ getOfflineToken :
         This action allows user to retrieve an offline token from the Keyclaok
@@ -1047,41 +1065,9 @@ class VisionWebApi(object):
         '{"message": "Configuration imported from /Users/fmota/Desktop/snmp+user.ata."}'
         """
 
-        file_name = ''
-        if 'file_name' in args:
-            file_name = args['file_name']
-            del args['file_name']
-
-        boundary = "-----WebKitFormBoundary" + str(int(time.time())) + str(os.getpid())
-
-        buffer = bytearray()
-
-        # Set param
-        buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'\r\n')
-        buffer.extend(b'Content-Disposition: form-data; name="param"\r\n')
-        buffer.extend(b'Content-Type: application/json\r\n')
-        buffer.extend(b'\r\n')
-        buffer.extend(bytearray(json.dumps(args), 'ascii'))
-        buffer.extend(b'\r\n')
-
-        # Set creative contents part.
-        buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'\r\n')
-        buffer.extend(b'Content-Disposition: form-data; name="file"; filename=' + bytearray(file_name, 'ascii') + b'\r\n')
-        buffer.extend(b'Content-Type: application/octet-stream\r\n')
-        buffer.extend(b'\r\n')
-        # TODO: catch errors with opening file.
-        buffer.extend(open(file_name, 'rb').read())
-        buffer.extend(b'\r\n')
-
-        buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'--\r\n')
-        buffer.extend(b'\r\n')
-
-        hdrs =  { 'Authentication' : self.token, 'Content-type' : 'multipart/form-data; boundary=' + boundary }
-        response = self.connection.urlopen('POST', '/api/actions/import', body=buffer, headers=hdrs)
-        #self._log (response.status, response.reason)
-        data = response.data
-        
-        return data
+        file_name = args['file_name']
+        f = {'file': (file_name, open(file_name ,'rb'), 'application/octet-stream')}
+        return self._sendRequest('POST', '/api/actions/import', args, True, f)
 
     def installMakoOs(self, args):
         """ installMakoOs :
@@ -1089,33 +1075,9 @@ class VisionWebApi(object):
         Sample usage:
         """
 
-        file_name = ''
-        if 'file_name' in args:
-            file_name = args['file_name']
-            del args['file_name']
-
-        boundary = "-----WebKitFormBoundary" + str(int(time.time())) + str(os.getpid())
-
-        buffer = bytearray()
-
-        # Set creative contents part.
-        buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'\r\n')
-        buffer.extend(b'Content-Disposition: form-data; name="file"; filename=' + bytearray(file_name, 'ascii') + b'\r\n')
-        buffer.extend(b'Content-Type: application/octet-stream\r\n')
-        buffer.extend(b'\r\n')
-        # TODO: catch errors with opening file.
-        buffer.extend(open(file_name, 'rb').read())
-        buffer.extend(b'\r\n')
-
-        buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'--\r\n')
-        buffer.extend(b'\r\n')
-
-        hdrs =  { 'Authentication' : self.token, 'Content-type' : 'multipart/form-data; boundary=' + boundary }
-        response = self.connection.urlopen('POST', '/api/actions/install_mako', body=buffer, headers=hdrs)
-        #self._log (response.status, response.reason)
-        data = response.data
-        
-        return data
+        file_name = args['file_name']
+        f = {'file': (file_name, open(file_name ,'rb'), 'application/octet-stream')}
+        return self._sendRequest('POST', '/api/actions/install_mako', args, True, f)
 
     def installLicense(self, args):
         """ installLicense :
@@ -1125,43 +1087,9 @@ class VisionWebApi(object):
         '{"message": "License installed from /Users/fmota/Desktop/IxiaLicenseA_17_Fred_20150826_1.txt."}'
         """
 
-        file_name = ''
-        if 'file_name' in args:
-            file_name = args['file_name']
-            del args['file_name']
-
-        boundary = "-----WebKitFormBoundary" + str(int(time.time())) + str(os.getpid())
-
-        buffer = bytearray()
-
-        # Set param
-        if len(args.keys()) > 0:
-            buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'\r\n')
-            buffer.extend(b'Content-Disposition: form-data; name="param"\r\n')
-            buffer.extend(b'Content-Type: application/json\r\n')
-            buffer.extend(b'\r\n')
-            #buffer.extend(json.dumps({'action_target' : target}))
-            buffer.extend(json.dumps(args))
-            buffer.extend(b'\r\n')
-
-        # Set creative contents part.
-        buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'\r\n')
-        buffer.extend(b'Content-Disposition: form-data; name="file"; filename=' + bytearray(file_name, 'ascii') + b'\r\n')
-        buffer.extend(b'Content-Type: application/octet-stream\r\n')
-        buffer.extend(b'\r\n')
-        # TODO: catch errors with opening file.
-        buffer.extend(open(file_name, 'rb').read())
-        buffer.extend(b'\r\n')
-
-        buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'--\r\n')
-        buffer.extend(b'\r\n')
-
-        hdrs =  { 'Authentication' : self.token, 'Content-type' : 'multipart/form-data; boundary=' + boundary }
-        response = self.connection.urlopen('POST', '/api/actions/install_license', body=buffer, headers=hdrs)
-        #self._log (response.status, response.reason)
-        data = response.data
-
-        return data
+        file_name = args['file_name']
+        f = {'file': (file_name, open(file_name ,'rb'), 'application/octet-stream')}
+        return self._sendRequest('POST', '/api/actions/install_license', args, True, f)
 
     def installNetservice(self, args):
         """ installNetservice :
@@ -1170,43 +1098,9 @@ class VisionWebApi(object):
         Sample usage:
         """
 
-        file_name = ''
-        if 'file_name' in args:
-            file_name = args['file_name']
-            del args['file_name']
-
-        boundary = "-----WebKitFormBoundary" + str(int(time.time())) + str(os.getpid())
-
-        buffer = bytearray()
-
-        # Set param
-        if len(args.keys()) > 0:
-            buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'\r\n')
-            buffer.extend(b'Content-Disposition: form-data; name="param"\r\n')
-            buffer.extend(b'Content-Type: application/json\r\n')
-            buffer.extend(b'\r\n')
-            #buffer.extend(json.dumps({'action_target' : target}))
-            buffer.extend(json.dumps(args))
-            buffer.extend(b'\r\n')
-
-        # Set creative contents part.
-        buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'\r\n')
-        buffer.extend(b'Content-Disposition: form-data; name="file"; filename=' + bytearray(file_name, 'ascii') + b'\r\n')
-        buffer.extend(b'Content-Type: application/octet-stream\r\n')
-        buffer.extend(b'\r\n')
-        # TODO: catch errors with opening file.
-        buffer.extend(open(file_name, 'rb').read())
-        buffer.extend(b'\r\n')
-
-        buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'--\r\n')
-        buffer.extend(b'\r\n')
-
-        hdrs =  { 'Authentication' : self.token, 'Content-type' : 'multipart/form-data; boundary=' + boundary }
-        response = self.connection.urlopen('POST', '/api/actions/install_netservice', body=buffer, headers=hdrs)
-        #self._log (response.status, response.reason)
-        data = response.data
-
-        return data
+        file_name = args['file_name']
+        f = {'file': (file_name, open(file_name ,'rb'), 'application/octet-stream')}
+        return self._sendRequest('POST', '/api/actions/install_netservice', args, True, f)
 
     def installLicense_old(self, args):
         """ installLicense :
@@ -1216,43 +1110,9 @@ class VisionWebApi(object):
         '{"message": "License installed from /Users/fmota/Desktop/IxiaLicenseA_17_Fred_20150826_1.txt."}'
         """
 
-        file_name = ''
-        if 'file_name' in args:
-            file_name = args['file_name']
-            del args['file_name']
-
-        boundary = "-----WebKitFormBoundary" + str(int(time.time())) + str(os.getpid())
-
-        parts = []
-
-        # Set param
-        if len(args.keys()) > 0:
-            parts.append('--' + boundary)
-            parts.append('Content-Disposition: form-data; name="param"')
-            parts.append('Content-Type: application/json')
-            parts.append('')
-            #parts.append(json.dumps({'action_target' : target}))
-            parts.append(json.dumps(args))
-
-        # Set creative contents part.
-        parts.append('--' + boundary)
-        parts.append('Content-Disposition: form-data; name="file"; filename=' + file_name)
-        parts.append('Content-Type: application/octet-stream')
-        parts.append('')
-        # TODO: catch errors with opening file.
-        parts.append(open(file_name, 'r').read())
-
-        parts.append('--' + boundary + '--')
-        parts.append('')
-
-        content = '\r\n'.join(parts)
-
-        hdrs =  { 'Authentication' : self.token, 'Content-type' : 'multipart/form-data; boundary=' + boundary }
-        response = self.connection.urlopen('POST', '/api/actions/install_license', body=content, headers=hdrs)
-        #self._log (response.status, response.reason)
-        data = response.data
-
-        return data
+        file_name = args['file_name']
+        f = {'file': (file_name, open(file_name ,'rb'), 'application/octet-stream')}
+        return self._sendRequest('POST', '/api/actions/install_license', args, True, f)
 
     def installSoftware(self, args):
         """ installSoftware :
@@ -1264,32 +1124,9 @@ class VisionWebApi(object):
         '{"message": "Software installation complete. The system will be restarted. Visit the 5288 launch page in your browser to obtain the updated client software."}'
         """
 
-        file_name = ''
-        if 'file_name' in args:
-            file_name = args['file_name']
-
-        boundary = "-----WebKitFormBoundary" + str(int(time.time())) + str(os.getpid())
-
-        buffer = bytearray()
-
-        # Set creative contents part.
-        buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'\r\n')
-        buffer.extend(b'Content-Disposition: form-data; name="file"; filename=' + bytearray(file_name, 'ascii') + b'\r\n')
-        buffer.extend(b'Content-Type: application/octet-stream\r\n')
-        buffer.extend(b'\r\n')
-        # TODO: catch errors with opening file.
-        buffer.extend(open(file_name, 'rb').read())
-        buffer.extend(b'\r\n')
-
-        buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'--\r\n')
-        buffer.extend(b'\r\n')
-
-        hdrs =  { 'Authentication' : self.token, 'Content-type' : 'multipart/form-data; boundary=' + boundary }
-        response = self.connection.urlopen('POST', '/api/actions/install_software', body=buffer, headers=hdrs)
-        #self._log (response.status, response.reason)
-        data = response.data
-
-        return data
+        file_name = args['file_name']
+        f = {'file': (file_name, open(file_name ,'rb'), 'application/octet-stream')}
+        return self._sendRequest('POST', '/api/actions/install_software', args, True, f)
 
     def interruptAeTraffic(self, args={}):
         """ interruptAeTraffic :
@@ -1399,6 +1236,14 @@ class VisionWebApi(object):
         """
         return self._sendRequest('POST', '/api/actions/request_kvo_certificate', args, False)
 
+    def requestLicenseUsageInfo(self):
+        """ requestLicenseUsageInfo :
+        This command will return a mapping of KSM feature names to usage counts for licenses
+        checked out from both the local and remote servers.
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/actions/request_license_usage_info', None)
+
     def requestLocalLicenseAvailability(self):
         """ requestLocalLicenseAvailability :
         This command will return a mapping of KSM feature names to installed counts for licenses
@@ -1413,6 +1258,13 @@ class VisionWebApi(object):
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/request_port_license_configuration', args, False)
+
+    def requestSystemLicenseCheckout(self, args={}):
+        """ requestSystemLicenseCheckout :
+        This command will attempt to checkout licenses for the desired system features.
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/actions/request_system_license_checkout', args, False)
 
     def resetEventRateLimiterStatus(self, args={}):
         """ resetEventRateLimiterStatus :
@@ -1453,6 +1305,13 @@ class VisionWebApi(object):
         {u'message': u'Software revert requested. The system will be restarted. Visit the 7300 launch page in your browser to obtain the reverted client software.'}
         """
         return self._sendRequest('POST', '/api/actions/revert_software', None)
+
+    def saveNetserviceConfig(self, args):
+        """ saveNetserviceConfig :
+        This command is used to apply the configuration on a netservice.
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/actions/save_netservice_config', args, False)
 
     def getLogs(self, args):
         """ getLogs :
@@ -1881,6 +1740,21 @@ class VisionWebApi(object):
             data = self._sendRequest('GET', '/api/auth/logout', {}, False)
         return data
 
+    def logoutByVersion(self):
+        """ logoutByVersion :
+        This call is used to invalidate any token returned from other calls to the web API.
+        Sample usage:
+        >>> nto.logoutByVersion()
+        'User -admin- has logged out.'
+        """
+        self._set_sw_version()
+        if self.sw_major_version <= 3 or (self.sw_major_version == 4 and self.sw_minor_version < 5):
+            return ''
+        elif self.sw_major_version == 4 and self.sw_minor_version >= 5:
+            return self._sendRequest('GET', '/api/auth/logout', {}, False)
+        else:
+            return self._sendRequest('POST', '/api/auth/logout', {}, False)
+
     ###################################################
     # Bypass Connectors
     ###################################################
@@ -1996,6 +1870,14 @@ class VisionWebApi(object):
         Sample usage:
         """
         return self._sendRequest('GET', '/api/ae_resources', None, True)
+
+    def relearnAnalysisEngineMuxStreams(self, args):
+        """ relearnAnalysisEngineMuxStreams :
+        Re-learn mux streams on one or more AE resources. If no AE resource ids are passed in,
+        mux streams will be re-learned on all AEs.
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/ae_resources/relearn_mux_streams', args, True)
 
     def searchAnalysisEngines(self, args):
         """ searchAnalysisEngines :
@@ -2251,56 +2133,9 @@ class VisionWebApi(object):
         Create a new IFC Custom Icon.
         Sample usage:
         """
-        description = ''
-        if 'description' in args:
-            description = args['description']
 
-        image = ''
-        if 'image' in args:
-            image = args['imge']
-
-        name = ''
-        if 'name' in args:
-            name = args['name']
-
-        boundary = "-----WebKitFormBoundary" + str(int(time.time())) + str(os.getpid())
-
-        buffer = bytearray()
-
-        # Set name
-        buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'\r\n')
-        buffer.extend(b'Content-Disposition: form-data; name="name"\r\n')
-        buffer.extend(b'Content-Type: text/plain\r\n')
-        buffer.extend(b'\r\n')
-        buffer.extend(bytearray(name, 'ascii'))
-        buffer.extend(b'\r\n')
-
-        # Set Description
-        buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'\r\n')
-        buffer.extend(b'Content-Disposition: form-data; name="description"\r\n')
-        buffer.extend(b'Content-Type: text/plain\r\n')
-        buffer.extend(b'\r\n')
-        buffer.extend(bytearray(description, 'ascii'))
-        buffer.extend(b'\r\n')
-
-        # Set creative contents part.
-        buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'\r\n')
-        buffer.extend(b'Content-Disposition: form-data; name="file"; filename=' + bytearray(image, 'ascii') + b'\r\n')
-        buffer.extend(b'Content-Type: application/octet-stream\r\n')
-        buffer.extend(b'\r\n')
-        # TODO: catch errors with opening file.
-        buffer.extend(open(image, 'rb').read())
-        buffer.extend(b'\r\n')
-
-        buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'--\r\n')
-
-        hdrs =  { 'Authentication' : self.token, 'Content-type' : 'multipart/form-data; boundary=' + boundary }
-        response = self.connection.urlopen('POST', '/api/cte_custom_icons', body=buffer, headers=hdrs)
-        #self._log (response.status, response.reason)
-        data = response.data
-        data = json.loads(data.decode('ascii'))
-
-        return data
+        f = {'file': (file_name, open(file_name ,'rb'), 'application/octet-stream')}
+        return self._sendRequest('POST', '/api/cte_custom_icons', args, True, f)
 
     def deleteIfcIcon(self, icon_id):
         """ deleteIfcIcon :
@@ -2426,12 +2261,59 @@ class VisionWebApi(object):
         return self._sendRequest('PUT', '/api/cte_filters/' + str(cte_filter_id), args, False)
 
 
+    # IFC Generic Netservice Resources
+
+    def disableIfcNetservice(self, netservice_id):
+        """ disableIfcNetservice :
+        Dettaches an IFC Netservice resource from a filter.
+        Sample usage:
+        """
+        return self._sendRequest('PUT', '/api/cte_one_port_ns_resources/' + str(netservice_id) + '/disable', None, False)
+
+    def enableIfcNetservice(self, netservice_id, args):
+        """ enableIfcNetservice :
+        Attaches an IFC Netservice resource to a filter.
+        Sample usage:
+        """
+        return self._sendRequest('PUT', '/api/cte_one_port_ns_resources/' + str(netservice_id) + '/enable', args, False)
+
+    def getIfcNetservice(self, netservice_id):
+        """ getIfcNetservice :
+        Fetch the properties of an IFC Netservice resource.
+        Sample usage:
+        """
+        return self._sendRequest('GET', '/api/cte_one_port_ns_resources/' + str(netservice_id))
+
+    def getAllIfcNetservices(self):
+        """ getAllIfcNetservices :
+        Fetch a list containing the summaries for all IFC Netservice resources.
+        Sample usage:
+        """
+        return self._sendRequest('GET', '/api/cte_one_port_ns_resources')
+
+    def searchIfcNetservices(self, args):
+        """ searchIfcNetservices :
+        Search a specific IFC Netservice resource by certain properties.
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/cte_one_port_ns_resources/search', args)
+
+    def modifyIfcNetservice(self, netservice_id, args):
+        """ modifyIfcNetservice :
+        Update the properties of an existing IFC Netservice Resource.
+        Sample usage:
+        """
+        return self._sendRequest('PUT', '/api/cte_one_port_ns_resources/' + str(netservice_id), args, False)
+
+
     # CTE Members
 
     def getCteMember(self, cte_member_id):
         """ getCteMember :
         Fetch the properties of a CTE member.
         Sample usage:
+        >>> nto.getCteMember('S1')
+	{'cluster_role': 'CONTROLLER_NODE', 'cte_id': 'S1', 'dtsp_version': None, 'fips_mode_enabled': False, 'history': None, 'ip_address': '192.168.214.11', 'license_feature_list': [{'comment': '7300-demodemo', 'creation_time': 1671468910190, 'description': 'Maintenance Contract', 'expiration_days': 90, 'expiration_time': 1685941199052, 'feature_type': 'MAINTENANCE', 'generic_netservice_sub_features': [], 'serial_number': 'demo', 'sub_features': []}, {'comment': 'exp-card', 'creation_time': 16
         """
         return self._sendRequest('GET', '/api/cte_members/' + str(cte_member_id))
 
@@ -2439,6 +2321,8 @@ class VisionWebApi(object):
         """ getAllCteMembers :
         Fetch a list containing the summaries for all the CTE members.
         Sample usage:
+        >>> nto.getAllCteMembers()
+	[{'cte_id': 'S2', 'ip_address': '192.168.214.12', 'uuid': 'b9eeaf6a-16ca-39f3-bdf5-7620aed91b62'}, {'cte_id': 'S3', 'ip_address': '192.168.214.13', 'uuid': 'e2ab7c65-b21e-38cc-9c3b-642b5e36429e'}, {'cte_id': 'S1', 'ip_address': '192.168.214.11', 'uuid': '67f6274e-0ac0-3d89-af9b-1ec09a2253fc'}]
         """
         return self._sendRequest('GET', '/api/cte_members')
 
@@ -2667,40 +2551,9 @@ class VisionWebApi(object):
         Sample usage:
         """
 
-        file_item = ''
-        if 'file_item' in args:
-            file_item = args['file_item']
-
-        boundary = "-----WebKitFormBoundary" + str(int(time.time())) + str(os.getpid())
-
-        buffer = bytearray()
-
-        # Set param
-        buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'\r\n')
-        buffer.extend(b'Content-Disposition: form-data; name="param"\r\n')
-        buffer.extend(b'Content-Type: application/json\r\n')
-        buffer.extend(b'\r\n')
-        buffer.extend(bytearray(json.dumps(args), 'ascii'))
-        buffer.extend(b'\r\n')
-
-        # Set creative contents part.
-        buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'\r\n')
-        buffer.extend(b'Content-Disposition: form-data; name="file"; filename=' + bytearray(file_item, 'ascii') + b'\r\n')
-        buffer.extend(b'Content-Type: application/octet-stream\r\n')
-        buffer.extend(b'\r\n')
-        # TODO: catch errors with opening file.
-        buffer.extend(open(file_item, 'rb').read())
-        buffer.extend(b'\r\n')
-
-        buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'--\r\n')
-        buffer.extend(b'\r\n')
-
-        hdrs =  { 'Authentication' : self.token, 'Content-type' : 'multipart/form-data; boundary=' + boundary }
-        response = self.connection.urlopen('POST', '/api/cte_operations/cte_install_dtsp', body=buffer, headers=hdrs)
-        #self._log (response.status, response.reason)
-        data = response.data
-        
-        return data
+        file_name = args['file_name']
+        f = {'file': (file_name, open(file_name ,'rb'), 'application/octet-stream')}
+        return self._sendRequest('POST', '/api/cte_operations/cte_install_dtsp', args, True, f)
 
     def interruptCteAnalysisEngineTraffic(self, args):
         """ interruptCteAnalysisEngineTraffic :
@@ -2754,6 +2607,64 @@ class VisionWebApi(object):
         Sample usage:
         """
         return self._sendRequest('POST', '/api/cte_operations/cte_update_single_ip_addr', args)
+
+
+    # IFC PacketStack resources
+
+    def disableIfcPacketStack(self, packet_stack_id):
+        """ disableIfcPacketStack :
+        Dettaches an IFC PacketStack resource from an IFC port, an IFC port group, or an IFC filter.
+        Sample usage:
+        """
+        return self._sendRequest('PUT', '/api/cte_recirculated_afm_resources/' + str(packet_stack_id) + '/disable', None, False)
+
+    def enableIfcPacketStack(self, packet_stack_id, args):
+        """ enableIfcPacketStack :
+        Attaches an IFC PacketStack to an IFC port, an IFC port group, or an IFC filter.
+        Sample usage:
+        """
+        return self._sendRequest('PUT', '/api/cte_recirculated_afm_resources/' + str(packet_stack_id) + '/enable', args, False)
+
+    def getIfcPacketStackBandwidth(self, packet_stack_id):
+        """ getIfcPacketStackBandwidth :
+        Gets the bandwidth details for the IFC PacketStack resource.
+        Sample usage:
+        """
+        return self._sendRequest('PUT', '/api/cte_recirculated_afm_resources/' + str(packet_stack_id) + '/get_bandwidth_details')
+
+    def getIfcPacketStack(self, packet_stack_id):
+        """ getIfcPacketStack :
+        Fetch the properties of an IFC PacketStack resource.
+        Sample usage:
+        """
+        return self._sendRequest('GET', '/api/cte_recirculated_afm_resources/' + str(packet_stack_id))
+
+    def getAllIfcPacketStacks(self):
+        """ getAllIfcPacketStacks :
+        Fetch a list containing the summaries for all IFC PacketStack resources.
+        Sample usage:
+        """
+        return self._sendRequest('GET', '/api/cte_recirculated_afm_resources/')
+
+    def searchIfcPacketStacks(self, args):
+        """ searchIfcPacketStacks :
+        Search a specific IFC PacketStack resource by certain properties.
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/cte_recirculated_afm_resources/search', args)
+
+    def setIfcPacketStackLoadBalance(self, packet_stack_id, args):
+        """ setIfcPacketStackLoadBalance :
+        Set load balance weights on PacketStack data lanes( internal ports).
+        """
+        return self._sendRequest('PUT', '/api/cte_recirculated_afm_resources/' + str(packet_stack_id) + '/set_load_balance', args, False)
+
+    def modifyIfcPacketStack(self, packet_stack_id, args):
+        """ modifyIfcPacketStack :
+        Update the properties of an existing IFC PacketStack resource.
+        Sample usage:
+        """
+        return self._sendRequest('PUT', '/api/cte_recirculated_afm_resources/' + str(packet_stack_id), args, False)
 
 
     # CTE Port Groups
@@ -2939,6 +2850,41 @@ class VisionWebApi(object):
         """
         return self._sendRequest('PUT', '/api/cte_remote_system/' + str(cte_id), args, False)
 
+    # IFC Statistics
+
+    def resetCteDropsStats(self, args):
+        """ resetCteDropsStats :
+        Reset the overflow drop counts for a set of specific tool ports and/or
+        output port groups.
+        Sample usage:
+        >>> nto.resetCteDropsStats({"cte_port":['e34a65e4-d78b-451d-8388-43cf6a0dceaf']})
+	    b'{}'
+        """
+        return self._sendRequest('POST', '/api/cte_stats/reset_drops', args, False)
+
+    def resetCteStats(self, args):
+        """ resetCteStats:
+        Reset the stats for a set of specific ports, port groups, and/or filters.
+        Sample usage:
+        >>> nto.resetCteStats({"cte_port":['e34a65e4-d78b-451d-8388-43cf6a0dceaf']})
+        b'{}'
+        """
+        return self._sendRequest('POST', '/api/cte_stats/reset_stats', args, False)
+
+    def getCteStats(self, args):
+        """ getCteStats:
+        Retrieves a stats snapshot. The snapshot may be customized to include stats
+        only for a specific set of NTO objects: ports, port groups, filters. By
+        default all the stats are included in a snapshot, but if the user desires
+        only a set of specific stats then the snapshot can be tweaked to include
+        only these stats.
+        Sample usage:
+        >>> nto.getCteStats({'stat_name': ['tp_current_tx_rate_bits'], 'port': ['P1-02'], 'remote_system': {'address': '127.0.0.11', 'port': 9011}})
+	{'stats_snapshot': [{'default_name': 'P1-02', 'id': '108', 'reset_by': 'admin', 'reset_time': 1679426489803, 'stats_time': 1679426644483, 'tp_current_tx_rate_bits': 1284805946, 'type': 'Port'}]}
+
+        """
+        return self._sendRequest('POST', '/api/cte_stats', args)
+
 
     ####################################
     # Custom Icons
@@ -2968,56 +2914,19 @@ class VisionWebApi(object):
         >>> nto.createIcon({'description': 'A bomb!', 'file_name': '/Users/fmota/Desktop/bomb.jpeg', 'name' : 'Bomb'})
         {u'id': u'75'}
         """
-        description = ''
+
+        multipart_form_data = {}
+
         if 'description' in args:
-            description = args['description']
+            multipart_form_data['description'] = (None, args['description'])
 
-        file_name = ''
-        if 'file_name' in args:
-            file_name = args['file_name']
-
-        name = ''
         if 'name' in args:
-            name = args['name']
+            multipart_form_data['name'] = (None, args['name'])
 
-        boundary = "-----WebKitFormBoundary" + str(int(time.time())) + str(os.getpid())
+        if 'file_name' in args:
+            multipart_form_data['file'] = (args['file_name'], open(args['file_name'], 'rb'))
 
-        buffer = bytearray()
-
-        # Set name
-        buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'\r\n')
-        buffer.extend(b'Content-Disposition: form-data; name="name"\r\n')
-        buffer.extend(b'Content-Type: text/plain\r\n')
-        buffer.extend(b'\r\n')
-        buffer.extend(bytearray(name, 'ascii'))
-        buffer.extend(b'\r\n')
-
-        # Set Description
-        buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'\r\n')
-        buffer.extend(b'Content-Disposition: form-data; name="description"\r\n')
-        buffer.extend(b'Content-Type: text/plain\r\n')
-        buffer.extend(b'\r\n')
-        buffer.extend(bytearray(description, 'ascii'))
-        buffer.extend(b'\r\n')
-
-        # Set creative contents part.
-        buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'\r\n')
-        buffer.extend(b'Content-Disposition: form-data; name="file"; filename=' + bytearray(file_name, 'ascii') + b'\r\n')
-        buffer.extend(b'Content-Type: application/octet-stream\r\n')
-        buffer.extend(b'\r\n')
-        # TODO: catch errors with opening file.
-        buffer.extend(open(file_name, 'rb').read())
-        buffer.extend(b'\r\n')
-
-        buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'--\r\n')
-
-        hdrs =  { 'Authentication' : self.token, 'Content-type' : 'multipart/form-data; boundary=' + boundary }
-        response = self.connection.urlopen('POST', '/api/custom_icons', body=buffer, headers=hdrs)
-        #self._log (response.status, response.reason)
-        data = response.data
-        data = json.loads(data.decode('ascii'))
-
-        return data
+        return self._sendRequest('POST', '/api/custom_icons', None, True, multipart_form_data)
 
     def modifyIcon(self, icon_id, args):
         """ modifyIcon :
@@ -4198,41 +4107,9 @@ class VisionWebApi(object):
         Sample usage:
         """
 
-        file_name = ''
-        if 'file_name' in args:
-            file_name = args['file_name']
-            del args['file_name']
-
-        boundary = "-----WebKitFormBoundary" + str(int(time.time())) + str(os.getpid())
-
-        buffer = bytearray()
-
-        # Set param
-        buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'\r\n')
-        buffer.extend(b'Content-Disposition: form-data; name="param"\r\n')
-        buffer.extend(b'Content-Type: application/json\r\n')
-        buffer.extend(b'\r\n')
-        buffer.extend(bytearray(json.dumps(args), 'ascii'))
-        buffer.extend(b'\r\n')
-
-        # Set creative contents part.
-        buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'\r\n')
-        buffer.extend(b'Content-Disposition: form-data; name="file"; filename=' + bytearray(file_name, 'ascii') + b'\r\n')
-        buffer.extend(b'Content-Type: application/octet-stream\r\n')
-        buffer.extend(b'\r\n')
-        # TODO: catch errors with opening file.
-        buffer.extend(open(file_name, 'rb').read())
-        buffer.extend(b'\r\n')
-
-        buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'--\r\n')
-        buffer.extend(b'\r\n')
-
-        hdrs =  { 'Authentication' : self.token, 'Content-type' : 'multipart/form-data; boundary=' + boundary }
-        response = self.connection.urlopen('POST', '/api/sip_correlator_resources/' + str(sip_id) + '/importAllowList', body=buffer, headers=hdrs)
-        #self._log (response.status, response.reason)
-        data = response.data
-
-        return data
+        file_name = args['file_name']
+        f = {'file': (file_name, open(file_name ,'rb'), 'application/octet-stream')}
+        return self._sendRequest('POST', '/api/sip_correlator_resources/' + str(sip_id) + '/importAllowList', args, True, f)
 
     def importSipWhiteListEntries(self, sip_id, args):
         """ importSipWhiteListEntries :
@@ -4240,41 +4117,9 @@ class VisionWebApi(object):
         Sample usage:
         """
 
-        file_name = ''
-        if 'file_name' in args:
-            file_name = args['file_name']
-            del args['file_name']
-
-        boundary = "-----WebKitFormBoundary" + str(int(time.time())) + str(os.getpid())
-
-        buffer = bytearray()
-
-        # Set param
-        buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'\r\n')
-        buffer.extend(b'Content-Disposition: form-data; name="param"\r\n')
-        buffer.extend(b'Content-Type: application/json\r\n')
-        buffer.extend(b'\r\n')
-        buffer.extend(bytearray(json.dumps(args), 'ascii'))
-        buffer.extend(b'\r\n')
-
-        # Set creative contents part.
-        buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'\r\n')
-        buffer.extend(b'Content-Disposition: form-data; name="file"; filename=' + bytearray(file_name, 'ascii') + b'\r\n')
-        buffer.extend(b'Content-Type: application/octet-stream\r\n')
-        buffer.extend(b'\r\n')
-        # TODO: catch errors with opening file.
-        buffer.extend(open(file_name, 'rb').read())
-        buffer.extend(b'\r\n')
-
-        buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'--\r\n')
-        buffer.extend(b'\r\n')
-
-        hdrs =  { 'Authentication' : self.token, 'Content-type' : 'multipart/form-data; boundary=' + boundary }
-        response = self.connection.urlopen('POST', '/api/sip_correlator_resources/' + str(sip_id) + '/importWhiteList', body=buffer, headers=hdrs)
-        #self._log (response.status, response.reason)
-        data = response.data
-
-        return data
+        file_name = args['file_name']
+        f = {'file': (file_name, open(file_name ,'rb'), 'application/octet-stream')}
+        return self._sendRequest('POST', '/api/sip_correlator_resources/' + str(sip_id) + '/importWhiteList', args, True, f)
 
     def getAllSips(self):
         """ getAllSips :
@@ -4389,6 +4234,14 @@ class VisionWebApi(object):
         [{u'id': 96, u'name': u'L1-AFM'}]
         """
         return self._sendRequest('POST', '/api/recirculated_afm_resources/search', args)
+
+    def setAfmLoadBalance(self, afm_id, args):
+        """ setAfmLoadBalance:
+        Set load balance weights on PacketStack data lanes( internal ports).
+        Sample usage:
+        ''
+        """
+        return self._sendRequest('PUT', '/api/recirculated_afm_resources/' + str(afm_id) + '/set_load_balance', args, False)
 
     def modifyAfm(self, afm_id, args):
         """ modifyAfm:
@@ -4653,6 +4506,22 @@ class VisionWebApi(object):
         """
         return self._sendRequest('PUT', '/api/users/' + str(user_id) + '/change_password', args, False)
 
+    def changePasswordUserByVersion(self, user_id, old_password, new_password):
+        """ changePasswordUserByVersion :
+        Change the user password.
+        Sample usage:
+        >>> nto.changePasswordUserByVersion('tcl1', 'tcl1', 'fredMota@123')
+        ''
+        """
+        self._set_sw_version()
+
+        if self.sw_major_version < 4 or (self.sw_major_version == 4 and self.sw_minor_version < 5):
+            args = {'password': new_password}
+            return self._sendRequest('PUT', '/api/users/' + str(user_id), args, False)
+        else:
+            args = {'new_password' : new_password, 'old_password' : old_password}
+            return self._sendRequest('PUT', '/api/users/' + str(user_id) + '/change_password', args, False)
+
     def createUser(self, args):
         """ createUser :
         Create a new user.
@@ -4817,41 +4686,9 @@ class VisionWebApi(object):
         Sample usage:
         """
 
-        file_name = ''
-        if 'file_name' in args:
-            file_name = args['file_name']
-            del args['file_name']
-
-        boundary = "-----WebKitFormBoundary" + str(int(time.time())) + str(os.getpid())
-
-        buffer = bytearray()
-
-        # Set param
-        buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'\r\n')
-        buffer.extend(b'Content-Disposition: form-data; name="param"\r\n')
-        buffer.extend(b'Content-Type: application/json\r\n')
-        buffer.extend(b'\r\n')
-        buffer.extend(bytearray(json.dumps(args), 'ascii'))
-        buffer.extend(b'\r\n')
-
-        # Set creative contents part.
-        buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'\r\n')
-        buffer.extend(b'Content-Disposition: form-data; name="file"; filename=' + bytearray(file_name, 'ascii') + b'\r\n')
-        buffer.extend(b'Content-Type: application/octet-stream\r\n')
-        buffer.extend(b'\r\n')
-        # TODO: catch errors with opening file.
-        buffer.extend(open(file_name, 'rb').read())
-        buffer.extend(b'\r\n')
-
-        buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'--\r\n')
-        buffer.extend(b'\r\n')
-
-        hdrs =  { 'Authentication' : self.token, 'Content-type' : 'multipart/form-data; boundary=' + boundary }
-        response = self.connection.urlopen('POST', '/api/actions/import_recovery_appliance_config', body=buffer, headers=hdrs)
-        #self._log (response.status, response.reason)
-        data = response.data
-
-        return data
+        file_name = args['file_name']
+        f = {'file': (file_name, open(file_name ,'rb'), 'application/octet-stream')}
+        return self._sendRequest('POST', '/api/actions/import_recovery_appliance_config', args, True, f)
 
     def installRecoveryApplianceSoftware(self, args):
         """ installRecoveryApplianceSoftware :
@@ -4859,32 +4696,9 @@ class VisionWebApi(object):
         Sample usage:
         """
 
-        file_name = ''
-        if 'file_name' in args:
-            file_name = args['file_name']
-
-        boundary = "-----WebKitFormBoundary" + str(int(time.time())) + str(os.getpid())
-
-        buffer = bytearray()
-
-        # Set creative contents part.
-        buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'\r\n')
-        buffer.extend(b'Content-Disposition: form-data; name="file"; filename=' + bytearray(file_name, 'ascii') + b'\r\n')
-        buffer.extend(b'Content-Type: application/octet-stream\r\n')
-        buffer.extend(b'\r\n')
-        # TODO: catch errors with opening file.
-        buffer.extend(open(file_name, 'rb').read())
-        buffer.extend(b'\r\n')
-
-        buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'--\r\n')
-        buffer.extend(b'\r\n')
-
-        hdrs =  { 'Authentication' : self.token, 'Content-type' : 'multipart/form-data; boundary=' + boundary }
-        response = self.connection.urlopen('POST', '/api/actions/install_appliance_software', body=buffer, headers=hdrs)
-        #self._log (response.status, response.reason)
-        data = response.data
-
-        return data
+        file_name = args['file_name']
+        f = {'file': (file_name, open(file_name ,'rb'), 'application/octet-stream')}
+        return self._sendRequest('POST', '/api/actions/install_appliance_software', args, True, f)
 
     def pairRecoveryAppliance(self, args):
         """ pairRecoveryAppliance:
@@ -5098,31 +4912,10 @@ class VisionWebApi(object):
         if 'gsc_session_filter_settings' in args:
             args['gsc_session_filter_settings']['imsi_list'] = list(set(args['gsc_session_filter_settings']['imsi_list']))
             return self._sendRequest('PATCH', '/api/filters/' + str(filter_id), args, False)
-        elif 'file_name' in args:
+        else:
             file_name = args['file_name']
-
-            boundary = "-----WebKitFormBoundary" + str(int(time.time())) + str(os.getpid())
-
-            buffer = bytearray()
-
-            # Set creative contents part.
-            buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'\r\n')
-            buffer.extend(b'Content-Disposition: form-data; name="file"; filename=' + bytearray(file_name, 'ascii') + b'\r\n')
-            buffer.extend(b'Content-Type: application/octet-stream\r\n')
-            buffer.extend(b'\r\n')
-            # TODO: catch errors with opening file.
-            buffer.extend(open(file_name, 'r').read())
-            buffer.extend(b'\r\n')
-
-            buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'--\r\n')
-
-            hdrs =  { 'Authentication' : self.token, 'Content-type' : 'multipart/form-data; boundary=' + boundary }
-            response = self.connection.urlopen('PATCH', '/api/filters/' + str(filter_id), body=buffer, headers=hdrs)
-            #self._log (response.status, response.reason)
-            data = response.data
-            #data = json.loads(data.decode('ascii'))
-
-            return data
+            f = {'file': (file_name, open(file_name ,'rb'), 'application/octet-stream')}
+            return self._sendRequest('POST', '/api/filters/' + str(filter_id), args, True, f)
 
     def partiallyDeleteFilter(self, filter_id, args):
         """ partiallyDeleteFilter :
@@ -5137,31 +4930,10 @@ class VisionWebApi(object):
         if 'gsc_session_filter_settings' in args:
             args['gsc_session_filter_settings']['imsi_list'] = list(set(args['gsc_session_filter_settings']['imsi_list']))
             return self._sendRequest('DELETE', '/api/filters/' + str(filter_id), args, False)
-        elif 'file_name' in args:
+        else:
             file_name = args['file_name']
-
-            boundary = "-----WebKitFormBoundary" + str(int(time.time())) + str(os.getpid())
-
-            buffer = bytearray()
-
-            # Set creative contents part.
-            buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'\r\n')
-            buffer.extend(b'Content-Disposition: form-data; name="file"; filename=' + bytearray(file_name, 'ascii') + b'\r\n')
-            buffer.extend(b'Content-Type: application/octet-stream\r\n')
-            buffer.extend(b'\r\n')
-            # TODO: catch errors with opening file.
-            buffer.extend(open(file_name, 'r').read())
-            buffer.extend(b'\r\n')
-
-            buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'--\r\n')
-
-            hdrs =  { 'Authentication' : self.token, 'Content-type' : 'multipart/form-data; boundary=' + boundary }
-            response = self.connection.urlopen('DELETE', '/api/filters/' + str(filter_id), body=buffer, headers=hdrs)
-            #self._log (response.status, response.reason)
-            data = response.data
-            #data = json.loads(data.decode('ascii'))
-
-            return data
+            f = {'file': (file_name, open(file_name ,'rb'), 'application/octet-stream')}
+            return self._sendRequest('POST', '/api/filters/' + str(filter_id), args, True, f)
 
     ###################################################
     # GSC Filters
@@ -5327,28 +5099,9 @@ class VisionWebApi(object):
         b'{\r\n  "success" : true,\r\n  "error" : ""\r\n}'
         """
 
-        boundary = "-----WebKitFormBoundary" + str(int(time.time())) + str(os.getpid())
-
-        buffer = bytearray()
-
-        # Set creative contents part.
-        buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'\r\n')
-        buffer.extend(b'Content-Disposition: form-data; name="file"; filename=' + bytearray(file_name, 'ascii') + b'\r\n')
-        buffer.extend(b'Content-Type: application/octet-stream\r\n')
-        buffer.extend(b'\r\n')
-        # TODO: catch errors with opening file.
-        buffer.extend(open(file_name, 'rb').read())
-        buffer.extend(b'\r\n')
-
-        buffer.extend(b'--' + bytearray(boundary, 'ascii') + b'--\r\n')
-
-        hdrs =  { 'Authentication' : self.token, 'Content-type' : 'multipart/form-data; boundary=' + boundary }
-        response = self.connection.urlopen('POST', '/api/gsc-imsi-lists/' + str(imsi_list_id) + '?uploadType=' + upload_type, body=buffer, headers=hdrs)
-        #self._log (response.status, response.reason)
-        data = response.data
-        #data = json.loads(data.decode('ascii'))
-
-        return data
+        file_name = args['file_name']
+        f = {'file': (file_name, open(file_name ,'rb'), 'application/octet-stream')}
+        return self._sendRequest('POST', '/api/gsc-imsi-lists/' + str(imsi_list_id) + '?uploadType=' + upload_type, args, True, f)
 
     def deleteGscImsiList(self, imsi_list_id):
         """ deleteGscImsiList :
