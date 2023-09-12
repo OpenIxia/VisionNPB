@@ -241,9 +241,9 @@
 #
 # April 24, 2023
 #    - Added Vision NPB v6.0.1 Changes:
-#        - added the setAfmLoadBalance method
-#        - Added all the IFC Generic Netservice Resources methods.
-#        - Added all the IFC PacketStack resources methods.
+#        - Added the setAfmLoadBalance method
+#        - Added all the IFC Generic Netservice Resources methods
+#        - Added all the IFC PacketStack resources methods
 #    - Added Vision NPB v6.1.0 Changes:
 #        - Added the getNetserviceConfig method
 #        - Added the saveNetserviceConfig method
@@ -253,6 +253,14 @@
 #    - Added Vision NPB v6.2.0 Changes:
 #        - Added method getNetserviceConfigHashValue
 #        - Added method requestLicenseUsageInfo
+#
+# September 12, 2023
+#    - Added Vision NPB v6.3.1 Changes:
+#        - Added the clearAaaUserLastLogin_info method
+#        - Added the getPortListNeighbors method
+#        - Added the getAggregatorResourceInternalInfo method
+#        - Added all the FlowStack Resources methods
+#        - Added the installDtsp method
 #
 # COPYRIGHT 2019-2023 Keysight Technologies.
 #
@@ -596,6 +604,13 @@ class VisionWebApi(object):
         """
         return self._sendRequest('POST', '/api/actions/clear_ae_channel_statistics_history', args)
 
+    def clearAaaUserLastLogin_info(self):
+        """ clearAaaUserLastLogin_info :
+        This action clears the data from aaa_user_last_login_info.
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/actions/clear_aaa_user_last_login_info', None, False)
+
     def clearAggregationSwitch(self):
         """ clearAggregationSwitch :
         Clears the configuration of an aggregation switch.
@@ -914,6 +929,13 @@ class VisionWebApi(object):
         """
         return self._sendRequest('POST', '/api/actions/get_ha_config_for_cli')
 
+    def getAggregatorResourceInternalInfo(self):
+        """ getAggregatorResourceInternalInfo :
+        This command is used to get the internal information mapping of a resource.
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/actions/get_aggregator_resource_internal_info')
+
     def getMemoryMeters(self):
         """ getMemoryMeters :
         Return the filter memory meters showing memory allocation and percentage used.
@@ -989,6 +1011,15 @@ class VisionWebApi(object):
         {u'P49': [{u'system_name': u'Ixia Vision One (Neo10 project)', u'port_description': u'', u'system_description': u'', u'expired': False, u'age': 1, u'chassis_id': u'00:1b:6e:04:8d:44', u'custom_tlvs': [], u'ttl': 120, u'port_id': u'P50', u'system_capabilities': u'', u'management_addresses': [], u'last_seen': 1577241420}]}
         """
         return self._sendRequest('POST', '/api/actions/get_neighbors', args)['message']
+
+    def getPortListNeighbors(self, args):
+        """ getNeighbors :
+        Get neighbors of a list of ports given as parameter. If the list given is empty or is
+        not given at all, it will return all neighbors for all ports that are valid for LLDP
+        and have valid neighbors registrations.
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/actions/get_neighbors_v2', args)
 
     def getLfdLocalPorts(self):
         """ getLfdLocalPorts :
@@ -1068,6 +1099,16 @@ class VisionWebApi(object):
         file_name = args['file_name']
         f = {'file': (file_name, open(file_name ,'rb'), 'application/octet-stream')}
         return self._sendRequest('POST', '/api/actions/import', args, True, f)
+
+    def installDtsp(self, args):
+        """ installDtsp :
+        This command installs a DTSP on a Trade Vision.
+        Sample usage:
+        """
+
+        file_name = args['file_name']
+        f = {'file': (file_name, open(file_name ,'rb'), 'application/octet-stream')}
+        return self._sendRequest('POST', '/api/actions/install_dtsp', args, True, f)
 
     def installMakoOs(self, args):
         """ installMakoOs :
@@ -2530,6 +2571,15 @@ class VisionWebApi(object):
         """
         return self._sendRequest('POST', '/api/cte_operations/cte_get_neighbors', args)
 
+    def getTransceiverInfoForMembersInCluster(self, args={}):
+        """ getTransceiverInfoForMembersInCluster :
+        Get transceiver info for specified list of members. If list of members is empty or not given at all,
+        then will return tranceiver info for all members in the cluster. If a list of members is specified,
+        then will return tranceiver info for the members specified in the list.
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/cte_operations/cte_get_transceiver_info', args)
+
     def getPortTunnelingInfo(self):
         """ getPortTunnelingInfo :
         Get the tunnel termination and origination settings.
@@ -3154,6 +3204,58 @@ class VisionWebApi(object):
         """
         return self.getFilter(filter, properties)
         #return self._sendRequest('GET', '/api/filters/' + str(filter) + '?properties=' + properties)
+
+    ####################################
+    # FlowStack resources
+    ####################################
+    def disableFlowStack(self, flowstack_id, args):
+        """ disableFlowStack :
+        Disables a FlowStack resource by disconnecting the attached port, port group or filter.
+        """
+        return self._sendRequest('PUT', '/api/flowstack_resources/' + str(flowstack_id) + '/disable', args, False)
+
+    def enableFlowStack(self, flowstack_id, args):
+        """ enableFlowStack :
+        Enables a FlowStack resource by attaching a port, port group or filter to it.
+        """
+        return self._sendRequest('PUT', '/api/flowstack_resources/' + str(flowstack_id) + '/enable', args, False)
+
+    def getFlowStackBandwidthDetails(self, flowstack_id, args):
+        """ getFlowStackBandwidthDetails :
+        Gets the bandwidth details for the FlowStack resource.
+        Sample usage:
+        """
+        return self._sendRequest('PUT', '/api/flowstack_resources/' + str(flowstack_id) + '/get_bandwidth_details', args)
+
+    def getAllFlowStackResources(self):
+        """ getAllFlowStackResources :
+        Fetch a list containing the summaries for all the FlowStack resources in the system.
+        Sample usage:
+        """
+        return self._sendRequest('GET', '/api/flowstack_resources')
+
+    def getFlowStackResource(self, flowstack, properties=None):
+        """ getFlowStackResource :
+        Fetch the properties of a FlowStack resource object.
+        Sample usage:
+        """
+        query = ""
+        if properties:
+            query = '?properties=' + ''.join(properties.split())
+
+        return self._sendRequest('GET', '/api/flowstack_resources/' + str(flowstack) + query)
+
+    def modifyFlowStack(self, flowstack_id, args):
+        """ modifyFlowStack :
+        Update the properties of an existing FlowStack resource.
+        """
+        return self._sendRequest('PUT', '/api/filters/' + str(flowstack_id), args, False)
+
+    def searchFlowStacks(self, args):
+        """ searchFlowStacks :
+        Search for a specific FlowStack resource in the system by certain properties.
+        """
+        return self._sendRequest('POST', '/api/flowstack_resources/search', args)
 
     ####################################
     # Groups
