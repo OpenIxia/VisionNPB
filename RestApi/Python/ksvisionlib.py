@@ -262,6 +262,16 @@
 #        - Added all the FlowStack Resources methods
 #        - Added the installDtsp method
 #
+# February 21, 2024
+#    - Renamed clearAaaUserLastLogin_info to clearAaaUserLastLoginInfo
+#    - Added Vision NPB v6.4.0 Changes:
+#        - Added the clearPacketStackPlusDedupLiteHash method
+#    - Added Vision NPB v6.5.0 Changes:
+#        - Added the startPortCapture method
+#        - Added the deletePortPcapFile method
+#        - Added the downloadPortPcapFiles method
+#        - Added the getPortPcapFileList method
+#
 # COPYRIGHT 2019-2023 Keysight Technologies.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -604,8 +614,15 @@ class VisionWebApi(object):
         """
         return self._sendRequest('POST', '/api/actions/clear_ae_channel_statistics_history', args)
 
-    def clearAaaUserLastLogin_info(self):
-        """ clearAaaUserLastLogin_info :
+    def clearPacketStackPlusDedupLiteHash(self):
+        """ clearPacketStackPlusDedupLiteHash :
+        This command clears the PacketStack Plus Dedup Lite hash tables.
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/actions/clear_ps_plus_dedup_lite_hash', None)
+
+    def clearAaaUserLastLoginInfo(self):
+        """ clearAaaUserLastLoginInfo :
         This action clears the data from aaa_user_last_login_info.
         Sample usage:
         """
@@ -3988,6 +4005,14 @@ class VisionWebApi(object):
         """
         return self._sendRequest('POST', '/api/ports', args)
 
+    def deletePortPcapFile(self, port_id, args):
+        """ deletePortPcapFile:
+        Deletes one or more PCAP files from Port.
+
+        Sample usage:
+        """
+        return self._sendRequest('DELETE', '/api/ports/' + str(port_id) + '/delete_pcap_files', args)
+
     def deletePort(self, port):
         """ deletePort :
         Remove a port from the system. This can be used only to remove
@@ -4000,6 +4025,22 @@ class VisionWebApi(object):
         b''
         """
         return self._sendRequest('DELETE', '/api/ports/' + str(port), None, False)
+
+    def downloadPortPcapFiles(self, port_id, args):
+        """ downloadPortPcapFiles:
+        Download one or more PCAP files for Port.
+
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/ports' + str(port_id) + '/download_pcap_files', args, False)
+
+    def getPortPcapFileList(self, port_id):
+        """ getPortPcapFileList:
+        Get a list of all PCAP files available for Port.
+
+        Sample usage:
+        """
+        return self._sendRequest('GET', '/api/ports' + str(port_id) + '/get_pcap_file_list', None)
 
     def getAllPorts(self):
         """ getAllPorts :
@@ -4025,6 +4066,13 @@ class VisionWebApi(object):
             query = '?properties=' + ''.join(properties.split())
             
         return self._sendRequest('GET', '/api/ports/' + str(port) + query)
+
+    def startPortCapture(self, port_id):
+        """ startPortCapture:
+        Start capture on a Port.
+        Sample usage:
+        """
+        return self._sendRequest('PUT', '/api/ports/' + str(port_id) + '/start_capture', None)
 
     def modifyPort(self, port_id, args):
         """ modifyPort :
