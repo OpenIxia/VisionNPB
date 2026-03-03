@@ -272,6 +272,14 @@
 #        - Added the downloadPortPcapFiles method
 #        - Added the getPortPcapFileList method
 #
+# June 12, 2024
+#    - Added support for IPv6, enclose IPv6 within "[]"
+#    - Change verify default to False
+#    - Added Vision NPB v6.6.0 Changes:
+#        - Added the requestFanStatus method
+#        - Added the requestPowerSupplyStatus method
+#        - Added the backupGscConfigFromKvo method
+#
 # COPYRIGHT 2019-2023 Keysight Technologies.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -341,7 +349,7 @@ class UnknownError(KeysightNpbExceptions):
 
 class VisionWebApi(object):
 
-    def __init__(self, host, username, password, port=8000, debug=False, log_file=None, timeout=30, retries=2, verify=True, version=None):
+    def __init__(self, host, username, password, port=8000, debug=False, log_file=None, timeout=10, retries=2, verify=False, version=None):
         if not verify:
             requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
         self.host = host
@@ -366,14 +374,25 @@ class VisionWebApi(object):
                             'PUT'   : self.session.put}
 
         self.authentication = HTTPBasicAuth(username, password)
-        retries = Retry(total = retries)
-        #        backoff_factor=0.1,
-        #        status_forcelist=[ 500, 502, 503, 504 ])
-        self.session.mount('https://', HTTPAdapter(max_retries=retries))
+        retry_strategy = Retry(
+            total=retries,
+            connect=retries,          # <- retry on connection failures (e.g., host unreachable/DNS)
+            read=retries,             # <- retry on read timeouts
+            status=retries,           # <- retry on certain HTTP statuses
+            #backoff_factor=0.1,       # exponential backoff: 0.5, 1.0, 2.0, ...
+            #status_forcelist=[429, 500, 502, 503, 504],
+            #allowed_methods={"HEAD","GET","OPTIONS","POST","PUT","PATCH","DELETE"},
+            #respect_retry_after_header=True
+        )
+        self.session.mount('https://', HTTPAdapter(max_retries=retry_strategy))
+
+        # IPv6 addresses must be within "[]"
+        self.ip_addr = self.host
+        if ":" in self.ip_addr:
+            self.ip_addr = "[" + self.ip_addr + "]"
 
         try:
-            response = self.session.get(f'https://{self.host}:{self.port}/auth', auth=self.authentication, verify=self.verify)
-            #response = self.session.get(f'https://{self.host}:{self.port}/auth', auth=self.authentication)
+            response = self.session.get(f'https://{self.ip_addr}:{self.port}/auth', auth=self.authentication, verify=self.verify, timeout=timeout)
         except requests.exceptions.ConnectTimeout:
             raise ConnectionError
         except:
@@ -418,7 +437,7 @@ class VisionWebApi(object):
             self._log (f" args={args}\n")
             self._log (f" files={file_info}\n")
 
-        response = self.methods_dic[httpMethod](f'https://{self.host}:{self.port}{url}',
+        response = self.methods_dic[httpMethod](f'https://{self.ip_addr}:{self.port}{url}',
                                                 timeout=self.__request_timeout,
                                                 json=args,
                                                 auth=self.authentication,
@@ -501,8 +520,7 @@ class VisionWebApi(object):
         """
 
         try:
-            response = self.session.get(f'https://{self.host}:{self.port}/auth', auth=self.authentication, verify=self.verify)
-            #response = self.session.get(f'https://{self.host}:{self.port}/auth', auth=self.authentication)
+            response = self.session.get(f'https://{self.ip_addr}:{self.port}/auth', auth=self.authentication, verify=self.verify)
         except requests.exceptions.ConnectTimeout:
             raise ConnectionError
         except:
@@ -645,7 +663,7 @@ class VisionWebApi(object):
 
     def changeSpeedConfiguration(self, args):
         """ changeSpeedConfiguration :
-        Changes the speed configuration of port..
+        Changes the speed configuration of port.
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/change_speed_configuration', args, False)
@@ -1277,6 +1295,13 @@ class VisionWebApi(object):
         """
         return self._sendRequest('POST', '/api/actions/remove_port_module_config', args, False)
 
+    def requestFanStatus(self):
+        """ requestFanStatus:
+        This command will return a mapping of fan module locations to fan module status information.
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/actions/request_fan_status', None, True)
+
     def removeLineCard(self, args):
         """ removeLineCard :
         This command will remove the line card based on the given line card id.
@@ -1316,6 +1341,13 @@ class VisionWebApi(object):
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/request_port_license_configuration', args, False)
+
+    def requestPowerSupplyStatus(self):
+        """ requestPowerSupplyStatus:
+        This command will return a mapping of power supply locations to power supply status information.
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/actions/request_power_supply_status', None, True)
 
     def requestSystemLicenseCheckout(self, args={}):
         """ requestSystemLicenseCheckout :
@@ -1504,6 +1536,13 @@ class VisionWebApi(object):
         Sample usage:
         """
         return self._sendRequest('POST', '/api/actions/backup_gsc_config', {})
+
+    def backupGscConfigFromKvo(self, args):
+        """ backupGscConfigFromKvo:
+        Backup GSC configuration from KVO.
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/actions/kvo_backup_gsc_config', args, True)
 
     def restoreGscConfig(self):
         """ backupGscConfig :
@@ -2316,7 +2355,7 @@ class VisionWebApi(object):
         Update the properties of an existing CTE connection.
         Sample usage:
         """
-        return self._sendRequest('PUT', '/api/cte_filters/' + str(cte_filter_id), args, False)
+        return self._sendRequest('PUT', '/api/cte_filters/' + str(cte_filter_id) + '?allowTemporayDataLoss=True', args, False)
 
 
     # IFC Generic Netservice Resources
@@ -2506,6 +2545,13 @@ class VisionWebApi(object):
         Sample usage:
         """
         return self._sendRequest('POST', '/api/cte_operations/change_role', args)
+
+    def changeCteSpeedConfiguration(self, args):
+        """ changeCteSpeedConfiguration :
+        Change speed configuration.
+        Sample usage:
+        """
+        return self._sendRequest('POST', '/api/cte_operations/cte_change_speed_configuration', args, False)
 
     def clearCteAeChannelStatsHistory(self, args):
         """ clearCteAeChannelStatsHistory :
